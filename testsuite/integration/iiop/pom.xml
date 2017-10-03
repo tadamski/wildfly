@@ -35,10 +35,6 @@
                     <name>!ts.noIIOP</name>
                 </property>
             </activation>
-
-            <properties>
-            </properties>
-
             <!-- Server configuration executions. -->
             <build>
                 <plugins>
@@ -100,6 +96,15 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
+                            <additionalClasspathElements>
+                                <additionalClasspathElement>${orbix.home}/lib/art/omg/1.3/omg.jar</additionalClasspathElement>
+                                <additionalClasspathElement>${orbix.home}/lib/art/art/1.3/art.jar</additionalClasspathElement>
+                                <additionalClasspathElement>${orbix.home}/lib/platform/java_poa/1.3/poa.jar</additionalClasspathElement>
+                                <additionalClasspathElement>${orbix.home}/lib/common/concurrency/1.3/concurrency.jar</additionalClasspathElement>
+                                <additionalClasspathElement>${orbix.home}/lib/common/ifc/1.3/ifc.jar</additionalClasspathElement>
+                                <additionalClasspathElement>${orbix.home}/lib/common/management/1.3/management.jar</additionalClasspathElement>
+                                <additionalClasspathElement>${orbix.home}/asp/6.3/lib/asp-corba.jar</additionalClasspathElement>
+                            </additionalClasspathElements>
                             <!-- Parameters to test cases. -->
                             <systemPropertyVariables combine.children="append">
                                 <arquillian.launch>iiop</arquillian.launch>
