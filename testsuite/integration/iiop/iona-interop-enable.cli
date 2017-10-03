@@ -1,0 +1,5 @@
+embed-server --server-config=standalone-full.xml
+
+/subsystem=iiop-openjdk:write-attribute(name=iona,value=true)
+
+stop-embedded-server
