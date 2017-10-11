@@ -224,12 +224,12 @@ public class MessageDrivenComponent extends EJBComponent implements PooledCompon
     }
 
     @Override
-    public void start() {
+    public void init() {
         if (endpoint == null) {
             throw EjbLogger.ROOT_LOGGER.endpointUnAvailable(this.getComponentName());
         }
 
-        super.start();
+        super.init();
 
         suspendController.registerActivity(serverActivity);
 
