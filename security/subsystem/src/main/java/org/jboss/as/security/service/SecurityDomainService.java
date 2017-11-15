@@ -96,6 +96,7 @@ public class SecurityDomainService implements Service<SecurityDomainContext> {
         SecurityDomainContext sdc;
         try {
             sdc = securityManagement.createSecurityDomainContext(name, cacheFactory, jsseSecurityDomain);
+            SecurityLogger.ROOT_LOGGER.errorf("I have created the context %s",sdc);
         } catch (Exception e) {
             throw SecurityLogger.ROOT_LOGGER.unableToStartException("SecurityDomainService", e);
         }
@@ -108,6 +109,7 @@ public class SecurityDomainService implements Service<SecurityDomainContext> {
         }
         securityManagement.getSecurityManagerMap().put(name, sdc);
         this.securityDomainContext = sdc;
+        SecurityLogger.ROOT_LOGGER.errorf("SecurityDomainService %s context started", name);
     }
 
     /** {@inheritDoc} */

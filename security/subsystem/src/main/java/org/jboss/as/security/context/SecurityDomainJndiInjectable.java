@@ -156,8 +156,10 @@ public class SecurityDomainJndiInjectable implements InvocationHandler, ContextL
     private SecurityDomainContext lookupSecurityDomain(final JNDIBasedSecurityManagement securityManagement,
             final ConcurrentHashMap<String, SecurityDomainContext> securityManagerMap, final String securityDomain)
             throws Exception {
+        SecurityLogger.ROOT_LOGGER.errorf("LookupSecurityDomain - my map is %s", securityManagerMap);
         SecurityDomainContext sdc = securityManagerMap.get(securityDomain);
         if (sdc == null) {
+            SecurityLogger.ROOT_LOGGER.error("found nothing - creating new context");
             sdc = securityManagement.createSecurityDomainContext(securityDomain, new DefaultAuthenticationCacheFactory());
             securityManagerMap.put(securityDomain, sdc);
         }
