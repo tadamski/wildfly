@@ -85,7 +85,7 @@ public interface IIOPLogger extends BasicLogger {
 
     @LogMessage(level = ERROR)
     @Message(id = 7, value = "Failed to obtain JSSE security domain with name %s")
-    void failedToObtainJSSEDomain(String securityDomain);
+    void failedToObtainJSSEDomain(String securityDomain, @Cause Throwable cause);
 
     @LogMessage(level = INFO)
     @Message(id = 8, value = "CORBA Naming Service started")

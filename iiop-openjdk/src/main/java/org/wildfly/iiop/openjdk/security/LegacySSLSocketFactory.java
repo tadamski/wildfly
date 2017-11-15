@@ -80,7 +80,7 @@ public class LegacySSLSocketFactory extends SocketFactoryBase {
                     + "/jsse");
             IIOPLogger.ROOT_LOGGER.debugf("Obtained JSSE security domain with name %s", securityDomain);
         } catch (NamingException ne) {
-            IIOPLogger.ROOT_LOGGER.failedToObtainJSSEDomain(securityDomain);
+            IIOPLogger.ROOT_LOGGER.failedToObtainJSSEDomain(securityDomain, ne);
         }
         if (jsseSecurityDomain == null)
             throw new RuntimeException(IIOPLogger.ROOT_LOGGER.failedToLookupJSSEDomain());
