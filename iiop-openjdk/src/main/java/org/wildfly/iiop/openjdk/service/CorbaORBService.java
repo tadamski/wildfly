@@ -88,6 +88,7 @@ public class CorbaORBService implements Service<ORB> {
 
     @Override
     public void start(StartContext context) throws StartException {
+        IIOPLogger.ROOT_LOGGER.errorf("ORB SERVICE STARTING");
         if (IIOPLogger.ROOT_LOGGER.isDebugEnabled()) {
             IIOPLogger.ROOT_LOGGER.debugf("Starting service %s", context.getController().getName().getCanonicalName());
         }

@@ -184,6 +184,7 @@ class SecurityDomainAdd extends AbstractAddStepHandler {
                         securityDomainService.getConfigurationInjector());
 
         if (jsseSecurityDomain != null) {
+            SecurityLogger.ROOT_LOGGER.errorf("SECURITY DOMAIN %s WILL DEPEND ON BINDER %s", securityDomain, ContextNames.JBOSS_CONTEXT_SERVICE_NAME.append("jaas"));
             builder.addDependency(ContextNames.JBOSS_CONTEXT_SERVICE_NAME.append("jaas"));
         }
 

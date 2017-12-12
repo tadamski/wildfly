@@ -44,6 +44,8 @@ import org.jboss.security.JSSESecurityDomain;
 import org.jboss.security.config.ApplicationPolicy;
 import org.jboss.security.config.ApplicationPolicyRegistration;
 
+import static org.jboss.as.naming.logging.NamingLogger.ROOT_LOGGER;
+
 /**
  * Service to install security domains.
  *
@@ -100,6 +102,7 @@ public class SecurityDomainService implements Service<SecurityDomainContext> {
             throw SecurityLogger.ROOT_LOGGER.unableToStartException("SecurityDomainService", e);
         }
         if (jsseSecurityDomain != null) {
+            ROOT_LOGGER.errorf("JAAS SECURITY DOMAIN STARTED");
             try {
                 jsseSecurityDomain.reloadKeyAndTrustStore();
             } catch (Exception e) {

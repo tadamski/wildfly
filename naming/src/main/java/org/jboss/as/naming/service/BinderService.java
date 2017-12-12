@@ -118,7 +118,7 @@ public class BinderService implements Service<ManagedReferenceFactory> {
         final ServiceBasedNamingStore namingStore = namingStoreValue.getValue();
         controller = context.getController();
         namingStore.add(controller.getName());
-        ROOT_LOGGER.tracef("Bound resource %s into naming store %s (service name %s)", name, namingStore, controller.getName());
+        ROOT_LOGGER.errorf("BINDER SERVICE: Bound resource %s into naming store %s (service name %s)", name, namingStore, controller.getName());
     }
 
     /**

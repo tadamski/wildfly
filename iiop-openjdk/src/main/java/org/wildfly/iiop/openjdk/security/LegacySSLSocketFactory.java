@@ -74,6 +74,8 @@ public class LegacySSLSocketFactory extends SocketFactoryBase {
         super.setORB(orb);
         this.orb = orb;
 
+        IIOPLogger.ROOT_LOGGER.errorf("LOOKING FOR JSSE DOMAIN");
+
         try {
             InitialContext context = new InitialContext();
             jsseSecurityDomain = (JSSESecurityDomain) context.lookup(SecurityConstants.JAAS_CONTEXT_ROOT + securityDomain
