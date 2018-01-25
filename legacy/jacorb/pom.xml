@@ -52,9 +52,9 @@
                    <configuration>
                       <artifactItems>
                          <artifactItem>
-                            <groupId>org.jboss.openjdk-orb</groupId>
-                            <artifactId>openjdk-orb</artifactId>
-                            <type>jar</type>
+                             <groupId>org.glassfish.corba</groupId>
+                             <artifactId>glassfish-corba-orb</artifactId>
+                             <type>jar</type>
                             <overWrite>true</overWrite>
                             <outputDirectory>${project.build.directory}/endorsed</outputDirectory>
                          </artifactItem>
@@ -98,10 +98,10 @@
             <artifactId>wildfly-iiop-openjdk</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.jboss.openjdk-orb</groupId>
-            <artifactId>openjdk-orb</artifactId>
-        </dependency>
+	<!--<dependency>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>glassfish-corba-orb</artifactId>
+	</dependency>-->
 
         <dependency>
             <groupId>org.wildfly</groupId>

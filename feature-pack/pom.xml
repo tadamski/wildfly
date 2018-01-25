@@ -250,6 +250,47 @@
         </dependency>
 
         <dependency>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>glassfish-corba-orb</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>glassfish-corba-csiv2-idl</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>glassfish-corba-omgapi</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>glassfish-corba-internal-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>exception-annotation-processor</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.external</groupId>
+            <artifactId>management-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.gmbal</groupId>
+            <artifactId>gmbal-api-only</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.grizzly</groupId>
+            <artifactId>grizzly-framework</artifactId>
+        </dependency>
+
+
+        <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-core</artifactId>
             <exclusions>
@@ -296,6 +337,26 @@
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>codemodel</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.pfl</groupId>
+            <artifactId>pfl-basic</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.pfl</groupId>
+            <artifactId>pfl-dynamic</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.pfl</groupId>
+            <artifactId>pfl-tf</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.pfl</groupId>
+            <artifactId>pfl-asm</artifactId>
         </dependency>
 
         <dependency>
@@ -419,11 +480,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jboss.openjdk-orb</groupId>
-            <artifactId>openjdk-orb</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>javax.jws</groupId>
             <artifactId>jsr181-api</artifactId>
         </dependency>
@@ -479,6 +535,11 @@
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.osgi.core</artifactId>
         </dependency>
 
         <!-- DO NOT MOVE the JBossWS dependencies here below; they need to come BEFORE the Apache CXF ones (see WFLY-5067) -->

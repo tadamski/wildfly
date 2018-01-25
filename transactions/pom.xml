@@ -48,8 +48,8 @@
             <artifactId>wildfly-iiop-openjdk</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jboss.openjdk-orb</groupId>
-            <artifactId>openjdk-orb</artifactId>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>glassfish-corba-orb</artifactId>
         </dependency>
         <dependency>
             <groupId>org.jboss</groupId>

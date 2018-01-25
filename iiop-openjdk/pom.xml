@@ -39,30 +39,30 @@
     <name>WildFly: IIOP Openjdk Subsystem</name>
 
     <build>
-       <plugins>
-          <plugin>
-             <artifactId>maven-dependency-plugin</artifactId>
-             <executions>
-                <execution>
-                   <phase>generate-sources</phase>
-                   <goals>
-                      <goal>copy</goal>
-                   </goals>
-                   <configuration>
-                      <artifactItems>
-                         <artifactItem>
-                            <groupId>org.jboss.openjdk-orb</groupId>
-                            <artifactId>openjdk-orb</artifactId>
-                            <type>jar</type>
-                            <overWrite>true</overWrite>
-                            <outputDirectory>${project.build.directory}/endorsed</outputDirectory>
-                         </artifactItem>
-                      </artifactItems>
-                   </configuration>
-                </execution>
-             </executions>
-          </plugin>
-       </plugins>
+        <plugins>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.glassfish.corba</groupId>
+                                    <artifactId>glassfish-corba-orb</artifactId>
+                                    <type>jar</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.build.directory}/endorsed</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
     <profiles>
         <profile>
@@ -87,11 +87,11 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.jboss.openjdk-orb</groupId>
-            <artifactId>openjdk-orb</artifactId>
-       </dependency>
+            <groupId>org.glassfish.corba</groupId>
+            <artifactId>glassfish-corba-orb</artifactId>
+        </dependency>
 
-       <dependency>
+        <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-server</artifactId>
         </dependency>
