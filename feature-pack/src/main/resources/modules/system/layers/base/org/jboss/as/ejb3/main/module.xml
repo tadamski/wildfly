@@ -39,7 +39,7 @@
         <module name="javax.jms.api"/>
         <module name="javax.persistence.api" />
         <module name="javax.security.jacc.api"/>
-        <module name="javax.orb.api"/>
+        <module name="org.glassfish.corba"/>
         <!-- For message inflow -->
         <module name="javax.resource.api"/>
         <module name="org.hibernate"/>

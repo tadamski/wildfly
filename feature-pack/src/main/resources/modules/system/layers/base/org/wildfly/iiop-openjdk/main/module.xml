@@ -34,7 +34,7 @@
     <dependencies>
         <module name="javax.api"/>
         <module name="javax.transaction.api"/>
-        <module name="javax.orb.api"/>
+        <module name="org.glassfish.corba"/>
         <module name="org.jboss.as.controller"/>
         <module name="org.jboss.as.naming"/>
         <module name="org.jboss.as.network"/>

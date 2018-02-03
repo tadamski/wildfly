@@ -23,7 +23,7 @@
   -->
 <module xmlns="urn:jboss:module:1.5" name="org.omg.api">
     <dependencies>
-        <module name="javax.orb.api" export="false">
+        <module name="org.glassfish.corba" export="false">
             <exports>
                 <include-set>
                     <path name="org/omg/ATLAS"/>
