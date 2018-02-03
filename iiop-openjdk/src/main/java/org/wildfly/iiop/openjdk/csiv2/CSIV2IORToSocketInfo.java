@@ -47,22 +47,21 @@ import org.omg.SSLIOP.SSLHelper;
 import org.omg.SSLIOP.TAG_SSL_SEC_TRANS;
 import org.wildfly.iiop.openjdk.Constants;
 
-import com.sun.corba.se.impl.encoding.CDRInputStream;
-import com.sun.corba.se.impl.encoding.EncapsInputStream;
-import com.sun.corba.se.spi.ior.IOR;
-import com.sun.corba.se.spi.ior.iiop.AlternateIIOPAddressComponent;
-import com.sun.corba.se.spi.ior.iiop.IIOPAddress;
-import com.sun.corba.se.spi.ior.iiop.IIOPProfileTemplate;
-import com.sun.corba.se.spi.orb.ORB;
-import com.sun.corba.se.spi.transport.IORToSocketInfo;
-import com.sun.corba.se.spi.transport.SocketInfo;
+import com.sun.corba.ee.impl.encoding.EncapsInputStream;
+import com.sun.corba.ee.spi.ior.IOR;
+import com.sun.corba.ee.spi.ior.iiop.AlternateIIOPAddressComponent;
+import com.sun.corba.ee.spi.ior.iiop.IIOPAddress;
+import com.sun.corba.ee.spi.ior.iiop.IIOPProfileTemplate;
+import com.sun.corba.ee.spi.orb.ORB;
+import com.sun.corba.ee.spi.transport.IORToSocketInfo;
+import com.sun.corba.ee.spi.transport.SocketInfo;
 import org.wildfly.iiop.openjdk.logging.IIOPLogger;
 
 import static java.security.AccessController.doPrivileged;
 
 /**
  * <p>
- * Implements an {@code com.sun.corba.se.spi.transport.IORToSocketInfo} which creates SocketInfo based on IOR contents. If CSIv2
+ * Implements an {@code com.sun.corba.ee.spi.transport.IORToSocketInfo} which creates SocketInfo based on IOR contents. If CSIv2
  * tagged component is present and it contains {@code org.omg.CSIIOP.TLS_SEC_TRANS} security mechanism then SSL socket is
  * created.
  * </p>
@@ -120,10 +119,10 @@ public class CSIV2IORToSocketInfo implements IORToSocketInfo {
             return null;
         }
         ORB orb = ior.getORB();
-        TaggedComponent compList = ((com.sun.corba.se.spi.ior.TaggedComponent) iter.next()).getIOPComponent(orb);
-        CDRInputStream in = doPrivileged(new PrivilegedAction<CDRInputStream>() {
+        TaggedComponent compList = ((com.sun.corba.ee.spi.ior.TaggedComponent) iter.next()).getIOPComponent(orb);
+        CDRInputStreamBase in = doPrivileged(new PrivilegedAction<CDRInputStreamBase>() {
             @Override
-            public CDRInputStream run() {
+            public CDRInputStreamBase run() {
                 return new EncapsInputStream(orb, compList.component_data, compList.component_data.length);
             }
         });
@@ -170,10 +169,10 @@ public class CSIV2IORToSocketInfo implements IORToSocketInfo {
             return null;
         }
         ORB orb = ior.getORB();
-        TaggedComponent compList = ((com.sun.corba.se.spi.ior.TaggedComponent) iter.next()).getIOPComponent(orb);
-        CDRInputStream in = doPrivileged(new PrivilegedAction<CDRInputStream>() {
+        TaggedComponent compList = ((com.sun.corba.ee.spi.ior.TaggedComponent) iter.next()).getIOPComponent(orb);
+        EncapsInputStream in = doPrivileged(new PrivilegedAction<EncapsInputStream>() {
             @Override
-            public CDRInputStream run() {
+            public EncapsInputStream run() {
                 return new EncapsInputStream(orb, compList.component_data, compList.component_data.length);
             }
         });
@@ -187,9 +186,9 @@ public class CSIV2IORToSocketInfo implements IORToSocketInfo {
             return null;
         }
         ORB orb = ior.getORB();
-        CDRInputStream in = doPrivileged(new PrivilegedAction<CDRInputStream>() {
+        EncapsInputStream in = doPrivileged(new PrivilegedAction<EncapsInputStream>() {
             @Override
-            public CDRInputStream run() {
+            public EncapsInputStream run() {
                 return new EncapsInputStream(orb, comp.component_data, comp.component_data.length);
             }
         });

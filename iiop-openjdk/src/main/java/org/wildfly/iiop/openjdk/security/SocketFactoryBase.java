@@ -25,10 +25,10 @@
 
 package org.wildfly.iiop.openjdk.security;
 
-import com.sun.corba.se.impl.orbutil.ORBConstants;
-import com.sun.corba.se.pept.transport.Acceptor;
-import com.sun.corba.se.spi.orb.ORB;
-import com.sun.corba.se.spi.transport.ORBSocketFactory;
+import com.sun.corba.ee.spi.misc.ORBConstants;
+import com.sun.corba.ee.spi.transport.Acceptor;
+import com.sun.corba.ee.spi.orb.ORB;
+import com.sun.corba.ee.spi.transport.ORBSocketFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

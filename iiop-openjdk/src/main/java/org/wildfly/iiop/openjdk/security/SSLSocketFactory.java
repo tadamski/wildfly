@@ -25,7 +25,7 @@ import java.security.AccessController;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 
-import com.sun.corba.se.spi.orb.ORB;
+import com.sun.corba.ee.spi.orb.ORB;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.server.CurrentServiceContainer;
 import org.jboss.msc.service.ServiceContainer;
@@ -34,7 +34,7 @@ import org.wildfly.iiop.openjdk.Constants;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
- * A {@link com.sun.corba.se.spi.transport.ORBSocketFactory} implementation that uses Elytron supplied {@link SSLContext}s
+ * A {@link com.sun.corba.ee.spi.transport.ORBSocketFactory} implementation that uses Elytron supplied {@link SSLContext}s
  * to create client and server side SSL sockets.
  *
  * @author <a href="mailto:sguilhen@redhat.com">Stefan Guilhen</a>

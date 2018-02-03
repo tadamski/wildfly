@@ -27,10 +27,10 @@ import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 
-import com.sun.corba.se.impl.interceptors.ClientRequestInfoImpl;
-import com.sun.corba.se.impl.transport.SocketOrChannelContactInfoImpl;
-import com.sun.corba.se.pept.transport.ContactInfo;
-import com.sun.corba.se.spi.transport.CorbaConnection;
+import com.sun.corba.ee.impl.interceptors.ClientRequestInfoImpl;
+import com.sun.corba.ee.impl.transport.ContactInfoImpl;
+import com.sun.corba.ee.spi.transport.Connection;
+import com.sun.corba.ee.spi.transport.ContactInfo;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.server.CurrentServiceContainer;
 import org.jboss.msc.service.ServiceContainer;
@@ -332,7 +332,7 @@ public class ElytronSASClientInterceptor extends LocalObject implements ClientRe
         final StringBuilder builder = new StringBuilder("iiop:");
         if (clientRequestInfo instanceof ClientRequestInfoImpl) {
             ClientRequestInfoImpl infoImpl = (ClientRequestInfoImpl) clientRequestInfo;
-            CorbaConnection connection = (CorbaConnection) infoImpl.connection();
+            Connection connection = (Connection) infoImpl.connection();
             if(connection == null) {
                 return null;
             }

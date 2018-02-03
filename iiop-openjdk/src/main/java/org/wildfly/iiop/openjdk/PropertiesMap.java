@@ -34,7 +34,7 @@ import java.util.Map;
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
  */
 
-import com.sun.corba.se.impl.orbutil.ORBConstants;
+import com.sun.corba.ee.spi.misc.ORBConstants;
 
 public interface PropertiesMap {
 

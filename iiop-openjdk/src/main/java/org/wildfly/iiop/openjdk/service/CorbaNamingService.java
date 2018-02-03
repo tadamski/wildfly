@@ -91,14 +91,14 @@ public class CorbaNamingService implements Service<NamingContextExt> {
                     "IDL:omg.org/CosNaming/NamingContextExt:1.0"));
 
             // exporting the NameService initial reference
-            ((com.sun.corba.se.impl.orb.ORBImpl) orb).register_initial_reference(Constants.NAME_SERVICE_INIT_REF,
+            ((com.sun.corba.ee.impl.orb.ORBImpl) orb).register_initial_reference(Constants.NAME_SERVICE_INIT_REF,
                     namingPOA.servant_to_reference(ns));
 
             // exporting root-context initial reference
             final boolean exportCorbaloc = properties.getProperty(Constants.NAMING_EXPORT_CORBALOC).equals("true");
             if (exportCorbaloc) {
                 final String rootContext = properties.getProperty(Constants.NAMING_ROOT_CONTEXT);
-                ((com.sun.corba.se.impl.orb.ORBImpl) orb).register_initial_reference(rootContext,
+                ((com.sun.corba.ee.impl.orb.ORBImpl) orb).register_initial_reference(rootContext,
                         namingPOA.servant_to_reference(ns));
             }
 

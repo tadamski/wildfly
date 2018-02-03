@@ -47,9 +47,9 @@ import org.wildfly.iiop.openjdk.logging.IIOPLogger;
 import org.wildfly.iiop.openjdk.naming.jndi.CorbaUtils;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
-import com.sun.corba.se.impl.orb.ORBImpl;
-import com.sun.corba.se.impl.orb.ORBSingleton;
-import com.sun.corba.se.impl.orbutil.ORBConstants;
+import com.sun.corba.ee.impl.orb.ORBImpl;
+import com.sun.corba.ee.impl.orb.ORBSingleton;
+import com.sun.corba.ee.spi.misc.ORBConstants;
 
 /**
  * <p>

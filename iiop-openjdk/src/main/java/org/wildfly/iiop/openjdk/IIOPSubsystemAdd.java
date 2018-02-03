@@ -74,7 +74,8 @@ import org.wildfly.iiop.openjdk.service.IORSecConfigMetaDataService;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
-import com.sun.corba.se.impl.orbutil.ORBConstants;
+import com.sun.corba.ee.spi.misc.ORBConstants;
+import com.sun.corba.ee.spi.presentation.rmi.PresentationManager;
 import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
 
 /**
@@ -135,9 +136,9 @@ public class IIOPSubsystemAdd extends AbstractBoottimeAddStepHandler {
         // the userDynamicStubs's property at runtime it is possible for the ORB class's <clinit> method to be
         // called before this property is set.
         // TODO: investigate a better way to handle this
-        com.sun.corba.se.spi.orb.ORB.getPresentationManager().setStubFactoryFactory(true,
+        com.sun.corba.ee.spi.orb.ORB.getPresentationManager().setStubFactoryFactory(true,
                 new DelegatingStubFactoryFactory());
-        com.sun.corba.se.spi.orb.ORB.getPresentationManager().setStubFactoryFactory(false,
+        com.sun.corba.ee.spi.orb.ORB.getPresentationManager().setStubFactoryFactory(false,
                 new DelegatingStubFactoryFactory());
 
         // setup naming.

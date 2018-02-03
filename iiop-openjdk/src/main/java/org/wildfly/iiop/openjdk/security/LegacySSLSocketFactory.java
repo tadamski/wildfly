@@ -40,7 +40,7 @@ import org.jboss.security.SecurityConstants;
 import org.wildfly.iiop.openjdk.Constants;
 import org.wildfly.iiop.openjdk.logging.IIOPLogger;
 
-import com.sun.corba.se.spi.orb.ORB;
+import com.sun.corba.ee.spi.orb.ORB;
 
 /**
  * <p>

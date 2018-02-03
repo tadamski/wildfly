@@ -85,7 +85,7 @@ import org.wildfly.iiop.openjdk.rmi.ir.InterfaceRepository;
 import org.wildfly.iiop.openjdk.rmi.marshal.strategy.SkeletonStrategy;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
-import com.sun.corba.se.spi.extension.ZeroPortPolicy;
+import com.sun.corba.ee.spi.extension.ZeroPortPolicy;
 import org.wildfly.transaction.client.ContextTransactionManager;
 
 /**

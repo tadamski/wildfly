@@ -41,7 +41,7 @@ import com.arjuna.ats.internal.jts.context.ContextPropagationManager;
 import com.arjuna.ats.jts.OTSManager;
 import com.arjuna.orbportability.OA;
 import com.arjuna.orbportability.ORB;
-import com.sun.corba.se.impl.orbutil.ORBConstants;
+import com.sun.corba.ee.impl.orbutil.ORBConstants;
 
 public class Util {
     public static final String HOST = NetworkUtils.formatPossibleIpv6Address(System.getProperty("node1", "localhost"));

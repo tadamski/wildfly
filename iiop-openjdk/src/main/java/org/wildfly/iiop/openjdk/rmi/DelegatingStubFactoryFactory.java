@@ -24,10 +24,11 @@ package org.wildfly.iiop.openjdk.rmi;
 
 import javax.rmi.CORBA.Tie;
 
-import com.sun.corba.se.impl.presentation.rmi.StubFactoryFactoryBase;
-import com.sun.corba.se.impl.presentation.rmi.StubFactoryFactoryProxyImpl;
-import com.sun.corba.se.impl.presentation.rmi.StubFactoryFactoryStaticImpl;
-import com.sun.corba.se.spi.presentation.rmi.PresentationManager;
+//com.sun.corba.ee.impl.presentation.rmi.proxy
+import com.sun.corba.ee.impl.presentation.rmi.StubFactoryFactoryBase;
+import com.sun.corba.ee.impl.presentation.rmi.proxy.StubFactoryFactoryProxyImpl;
+import com.sun.corba.ee.impl.presentation.rmi.StubFactoryFactoryStaticImpl;
+import com.sun.corba.ee.spi.presentation.rmi.PresentationManager;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 import java.security.AccessController;
