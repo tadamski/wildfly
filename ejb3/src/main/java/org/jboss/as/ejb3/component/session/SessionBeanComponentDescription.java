@@ -43,6 +43,7 @@ import org.jboss.as.ee.component.ViewConfiguration;
 import org.jboss.as.ee.component.ViewConfigurator;
 import org.jboss.as.ee.component.ViewDescription;
 import org.jboss.as.ee.component.interceptors.InterceptorOrder;
+import org.jboss.as.ejb3.aop.AOPInterceptor;
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.as.ejb3.component.EJBComponentDescription;
 import org.jboss.as.ejb3.component.EJBViewDescription;
@@ -346,6 +347,8 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
             view.getConfigurators().add(getSessionBeanObjectViewConfigurator());
         }
 
+        addAOPInterceptors(view);
+
     }
 
     protected abstract ViewConfigurator getSessionBeanObjectViewConfigurator();
@@ -365,6 +368,15 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
                 if (TransactionManagementType.CONTAINER.equals(ejbComponentDescription.getTransactionManagementType())) {
                     configuration.addViewInterceptor(CMTTxInterceptor.FACTORY, InterceptorOrder.View.CMT_TRANSACTION_INTERCEPTOR);
                 }
+            }
+        });
+    }
+
+    protected void addAOPInterceptors(ViewDescription view) {
+        view.getConfigurators().add(new ViewConfigurator() {
+            @Override
+            public void configure(DeploymentPhaseContext context, ComponentConfiguration componentConfiguration, ViewDescription description, ViewConfiguration configuration) throws DeploymentUnitProcessingException {
+                configuration.addViewInterceptor(AOPInterceptor.FACTORY, InterceptorOrder.View.AOP_INTERCEPTOR);
             }
         });
     }
@@ -394,7 +406,6 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
                 configuration.addViewInterceptor(CurrentInvocationContextInterceptor.FACTORY, InterceptorOrder.View.INVOCATION_CONTEXT_INTERCEPTOR);
             }
         });
-
     }
 
     @Override

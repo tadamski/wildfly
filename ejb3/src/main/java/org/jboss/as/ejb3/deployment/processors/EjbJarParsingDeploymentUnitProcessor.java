@@ -40,6 +40,7 @@ import org.jboss.as.ee.component.EEModuleDescription;
 import org.jboss.as.ee.metadata.MetadataCompleteMarker;
 import org.jboss.as.ee.structure.JBossDescriptorPropertyReplacement;
 import org.jboss.as.ee.structure.SpecDescriptorPropertyReplacement;
+import org.jboss.as.ejb3.aop.AOPParser;
 import org.jboss.as.ejb3.cache.EJBBoundCacheParser;
 import org.jboss.as.ejb3.clustering.ClusteringSchema;
 import org.jboss.as.ejb3.clustering.EJBBoundClusteringMetaDataParser;
@@ -337,6 +338,7 @@ public class EjbJarParsingDeploymentUnitProcessor implements DeploymentUnitProce
         parsers.put(EJBBoundCacheParser.NAMESPACE_URI, new EJBBoundCacheParser());
         parsers.put(ContainerInterceptorsParser.NAMESPACE_URI_1_0, ContainerInterceptorsParser.INSTANCE);
         parsers.put(TimerServiceMetaDataParser.NAMESPACE_URI, TimerServiceMetaDataParser.INSTANCE);
+        parsers.put(AOPParser.NAMESPACE_URI, AOPParser.INSTANCE);
         return parsers;
     }
 }
