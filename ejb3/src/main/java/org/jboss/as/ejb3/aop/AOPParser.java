@@ -24,7 +24,7 @@ public class AOPParser extends AbstractEJBBoundMetaDataParser<AOPMetaData> {
             if (localName.equals("interceptor-class")) {
                 metaData.setInterceptorClass(getElementText(reader, propertyReplacer));
             } else if (localName.equals("interceptor-module")) {
-                metaData.setInterceptorClass(getElementText(reader, propertyReplacer));
+                metaData.setInterceptorModule(getElementText(reader, propertyReplacer));
             } else {
                 throw unexpectedElement(reader);
             }

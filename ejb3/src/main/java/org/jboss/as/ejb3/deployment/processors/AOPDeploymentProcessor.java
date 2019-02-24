@@ -23,10 +23,10 @@ public class AOPDeploymentProcessor implements DeploymentUnitProcessor {
         final EjbJarMetaData ejbJarMetaData = deploymentUnit.getAttachment(EjbDeploymentAttachmentKeys.EJB_JAR_METADATA);
 
         if (ejbJarMetaData != null && ejbJarMetaData.getAssemblyDescriptor() != null) {
-            List<AOPMetaData> timerService = ejbJarMetaData.getAssemblyDescriptor().getAny(AOPMetaData.class);
-            if (timerService != null) {
-                for (AOPMetaData data : timerService) {
-                    System.out.println("MAM JAKAS METADATE!!!!!!!!!!");
+            List<AOPMetaData> metaData = ejbJarMetaData.getAssemblyDescriptor().getAny(AOPMetaData.class);
+            if (metaData != null) {
+                for (AOPMetaData md : metaData) {
+
                 }
             }
         }

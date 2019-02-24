@@ -2,6 +2,7 @@
         xmlns="http://java.sun.com/xml/ns/javaee"
         xmlns:jboss="http://www.jboss.com/xml/ns/javaee"
         xmlns:s="urn:security:1.1"
+        xmlns:aop="urn:aop:1.0"
         version="3.1" impl-version="2.0">
 
     <assembly-descriptor>
@@ -9,5 +10,10 @@
             <ejb-name>*</ejb-name>
             <s:missing-method-permissions-deny-access>false</s:missing-method-permissions-deny-access>
         </s:security>
+        <aop:interceptor>
+            <ejb-name>*</ejb-name>
+            <aop:interceptor-class>org.jboss.as.test.integration.ejb.servlet.TestInterceptor</aop:interceptor-class>
+            <aop:interceptor-module>test.customInterceptors</aop:interceptor-module>
+        </aop:interceptor>
     </assembly-descriptor>
 </jboss:jboss>

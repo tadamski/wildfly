@@ -159,4 +159,11 @@ public interface EJB3SubsystemModel {
     String ENABLE_JACC = "enable-jacc";
 
     PathElement IDENTITY_PATH = PathElement.pathElement(SERVICE, IDENTITY);
+
+    //Server interceptors
+    String SERVER_INTERCEPTORS = "server-interceptors";
+    String SERVER_INTERCEPTORS_MODULE = "server-interceptors-module";
+    String SERVER_INTERCEPTOR = "server-interceptor";
+
+
 }

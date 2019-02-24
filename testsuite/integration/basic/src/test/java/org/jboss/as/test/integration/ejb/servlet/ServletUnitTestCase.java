@@ -32,6 +32,7 @@ import org.jboss.arquillian.container.test.api.OperateOnDeployment;
 import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.arquillian.test.api.ArquillianResource;
+import org.jboss.as.arquillian.api.ServerSetup;
 import org.jboss.as.test.integration.common.HttpRequest;
 import org.jboss.as.test.shared.integration.ejb.security.Util;
 import org.jboss.logging.Logger;
@@ -53,6 +54,7 @@ import org.wildfly.security.permission.ElytronPermission;
  * @author William DeCoste, Ondrej Chaloupka
  */
 @RunWith(Arquillian.class)
+@ServerSetup({SetupTask.class})
 @RunAsClient
 public class ServletUnitTestCase {
     private static final Logger log = Logger.getLogger(ServletUnitTestCase.class.getName());

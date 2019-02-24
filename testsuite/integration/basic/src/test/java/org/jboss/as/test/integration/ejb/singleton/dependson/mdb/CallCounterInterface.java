@@ -28,7 +28,7 @@ import javax.ejb.Local;
  * @author baranowb
  */
 @Local
-public interface CallCounterInterface {
+public interface    CallCounterInterface {
     boolean isPostConstruct();
 
     void setPostConstruct();

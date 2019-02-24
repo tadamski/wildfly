@@ -23,7 +23,10 @@
 package org.jboss.as.ejb3.subsystem;
 
 import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.URI;
 import static org.jboss.as.controller.parsing.ParseUtils.missingRequired;
 import static org.jboss.as.controller.parsing.ParseUtils.missingRequiredElement;
@@ -34,7 +37,10 @@ import static org.jboss.as.controller.parsing.ParseUtils.unexpectedAttribute;
 import static org.jboss.as.controller.parsing.ParseUtils.unexpectedElement;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.APPLICATION_SECURITY_DOMAIN;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.IDENTITY;
+import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.SERVER_INTERCEPTOR;
+import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.SERVER_INTERCEPTORS_MODULE;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.SERVICE;
+import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.TIMER_SERVICE;
 
 import java.util.Collections;
 import java.util.EnumSet;
@@ -82,6 +88,10 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
             }
             case ENABLE_GRACEFUL_TXN_SHUTDOWN: {
                 parseEnableGracefulTxnShutdown(reader, ejb3SubsystemAddOperation);
+                break;
+            }
+            case SERVER_INTERCEPTORS: {
+                parseServerInterceptors(reader, operations);
                 break;
             }
             default: {
@@ -332,4 +342,103 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
         return staticDiscovery;
     }
 
+    protected void parseServerInterceptors(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
+
+        final ModelNode address = new ModelNode();
+        address.add(SUBSYSTEM, EJB3Extension.SUBSYSTEM_NAME);
+        address.add(SERVICE, TIMER_SERVICE);
+        final ModelNode timerServiceAdd = new ModelNode();
+        timerServiceAdd.get(OP).set(ADD);
+        timerServiceAdd.get(OP_ADDR).set(address);
+
+        requireNoAttributes(reader);
+
+        while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
+            switch (EJB3SubsystemXMLElement.forName(reader.getLocalName())) {
+                case MODULES: {
+                    parseModules(reader, operations);
+                }
+                case INTERCEPTOR: {
+                    parseInterceptor(reader, operations);
+                }
+                default: {
+                    throw unexpectedElement(reader);
+                }
+            }
+        }
+    }
+
+    protected void parseServerInterceptors(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
+
+        final ModelNode address = new ModelNode();
+        address.add(SUBSYSTEM, EJB3Extension.SUBSYSTEM_NAME);
+        address.add(SERVICE, TIMER_SERVICE);
+        final ModelNode timerServiceAdd = new ModelNode();
+        timerServiceAdd.get(OP).set(ADD);
+        timerServiceAdd.get(OP_ADDR).set(address);
+
+        requireNoAttributes(reader);
+
+        while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
+            switch (EJB3SubsystemXMLElement.forName(reader.getLocalName())) {
+                case MODULE: {
+                    parseModule(reader, operations);
+                }
+                case INTERCEPTOR: {
+                    parseInterceptor(reader, operations);
+                }
+                default: {
+                    throw unexpectedElement(reader);
+                }
+            }
+        }
+    }
+
+    protected void parseModule(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
+        String name = null;
+        ModelNode operation = Util.createAddOperation();
+        for (int i = 0; i < reader.getAttributeCount(); i++) {
+            requireNoNamespaceAttribute(reader, i);
+            final String value = reader.getAttributeValue(i);
+            switch (EJB3SubsystemXMLAttribute.forName(reader.getAttributeLocalName(i))) {
+                case NAME: {
+                    name = value;
+                    break;
+                }
+                default: {
+                    throw unexpectedAttribute(reader, i);
+                }
+            }
+        }
+        if (name == null) {
+            throw missingRequired(reader, Collections.singleton(EJB3SubsystemXMLAttribute.NAME.getLocalName()));
+        }
+        // create and add the operation
+        operation.get(OP_ADDR).set(SUBSYSTEM_PATH.append(SERVER_INTERCEPTORS_MODULE, name).toModelNode());
+        operations.add(operation);
+    }
+
+    protected void parseInterceptor(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
+        String name = null;
+        ModelNode operation = Util.createAddOperation();
+        for (int i = 0; i < reader.getAttributeCount(); i++) {
+            requireNoNamespaceAttribute(reader, i);
+            final String value = reader.getAttributeValue(i);
+            switch (EJB3SubsystemXMLAttribute.forName(reader.getAttributeLocalName(i))) {
+                case NAME: {
+                    name = value;
+                    break;
+                }
+                default: {
+                    throw unexpectedAttribute(reader, i);
+                }
+            }
+        }
+        if (name == null) {
+            throw missingRequired(reader, Collections.singleton(EJB3SubsystemXMLAttribute.NAME.getLocalName()));
+        }
+        // create and add the operation
+        operation.get(OP_ADDR).set(SUBSYSTEM_PATH.append(SERVER_INTERCEPTOR, name).toModelNode());
+        operations.add(operation);
+    }
 }
