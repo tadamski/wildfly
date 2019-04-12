@@ -281,7 +281,6 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_CLIENT_METADATA, new EJBClientDescriptorMetaDataProcessor(appclient));
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_DISCOVERY, new DiscoveryRegistrationProcessor(appclient));
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_DEFAULT_SECURITY_DOMAIN, EJB3SubsystemAdd.this.defaultSecurityDomainDeploymentProcessor);
-                processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_AOP, new AOPDeploymentProcessor());
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_COMPONENT_SUSPEND, new EJBComponentSuspendDeploymentUnitProcessor());
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_COMPONENT_SUSPEND + 1, new EjbClientContextSetupProcessor()); //TODO: real phase numbers
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_COMPONENT_SUSPEND + 2, new StartupAwaitDeploymentUnitProcessor());

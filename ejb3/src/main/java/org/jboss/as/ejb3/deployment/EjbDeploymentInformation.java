@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Runtime information about an EJB in a module
+ * Runtime information about an EJB in a interceptorModule
  *
  * @author Stuart Douglas
  */

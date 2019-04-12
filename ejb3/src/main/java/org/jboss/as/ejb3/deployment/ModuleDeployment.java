@@ -34,7 +34,7 @@ import java.util.Collections;
 import java.util.Map;
 
 /**
- * Represents a deployed module on AS7
+ * Represents a deployed interceptorModule on AS7
  *
  * @author Stuart Douglas
  */
@@ -81,7 +81,7 @@ public class ModuleDeployment implements Service<ModuleDeployment> {
     }
 
     /**
-     * service that marks a module a started
+     * service that marks a interceptorModule a started
      */
     public static final class ModuleDeploymentStartService implements Service<Void> {
 

@@ -46,7 +46,7 @@ public class EjbJarDescription {
     public EjbJarDescription(EEModuleDescription eeModuleDescription, boolean war) {
         this.war = war;
         if (eeModuleDescription == null) {
-            throw EjbLogger.ROOT_LOGGER.paramCannotBeNull("EE module description");
+            throw EjbLogger.ROOT_LOGGER.paramCannotBeNull("EE interceptorModule description");
         }
         this.eeModuleDescription = eeModuleDescription;
     }

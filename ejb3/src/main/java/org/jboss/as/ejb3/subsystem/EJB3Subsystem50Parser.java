@@ -344,20 +344,10 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
 
     protected void parseServerInterceptors(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
 
-        final ModelNode address = new ModelNode();
-        address.add(SUBSYSTEM, EJB3Extension.SUBSYSTEM_NAME);
-        address.add(SERVICE, TIMER_SERVICE);
-        final ModelNode timerServiceAdd = new ModelNode();
-        timerServiceAdd.get(OP).set(ADD);
-        timerServiceAdd.get(OP_ADDR).set(address);
-
         requireNoAttributes(reader);
 
         while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
             switch (EJB3SubsystemXMLElement.forName(reader.getLocalName())) {
-                case MODULES: {
-                    parseModules(reader, operations);
-                }
                 case INTERCEPTOR: {
                     parseInterceptor(reader, operations);
                 }
@@ -368,35 +358,12 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
         }
     }
 
-    protected void parseServerInterceptors(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
-
-        final ModelNode address = new ModelNode();
-        address.add(SUBSYSTEM, EJB3Extension.SUBSYSTEM_NAME);
-        address.add(SERVICE, TIMER_SERVICE);
-        final ModelNode timerServiceAdd = new ModelNode();
-        timerServiceAdd.get(OP).set(ADD);
-        timerServiceAdd.get(OP_ADDR).set(address);
-
-        requireNoAttributes(reader);
-
-        while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
-            switch (EJB3SubsystemXMLElement.forName(reader.getLocalName())) {
-                case MODULE: {
-                    parseModule(reader, operations);
-                }
-                case INTERCEPTOR: {
-                    parseInterceptor(reader, operations);
-                }
-                default: {
-                    throw unexpectedElement(reader);
-                }
-            }
-        }
-    }
 
     protected void parseModule(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
+
         String name = null;
         ModelNode operation = Util.createAddOperation();
+
         for (int i = 0; i < reader.getAttributeCount(); i++) {
             requireNoNamespaceAttribute(reader, i);
             final String value = reader.getAttributeValue(i);
@@ -405,6 +372,16 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
                     name = value;
                     break;
                 }
+                case MODULE: {
+                    ServerInterceptorDefinition.MODULE.parseAndSetParameter(value, operation, reader);
+                }
+                case CLASS: {
+                    ServerInterceptorDefinition.CLASS.parseAndSetParameter(value, operation, reader);
+                }
+                case BINDING: {
+                    ServerInterceptorDefinition.BINDING.parseAndSetParameter(value, operation, reader);
+                }
+
                 default: {
                     throw unexpectedAttribute(reader, i);
                 }
@@ -414,7 +391,7 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
             throw missingRequired(reader, Collections.singleton(EJB3SubsystemXMLAttribute.NAME.getLocalName()));
         }
         // create and add the operation
-        operation.get(OP_ADDR).set(SUBSYSTEM_PATH.append(SERVER_INTERCEPTORS_MODULE, name).toModelNode());
+        operation.get(OP_ADDR).set(SUBSYSTEM_PATH.append(SERVER_INTERCEPTOR, name).toModelNode());
         operations.add(operation);
     }
 
@@ -429,6 +406,7 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
                     name = value;
                     break;
                 }
+                case MODULE_NAME:
                 default: {
                     throw unexpectedAttribute(reader, i);
                 }

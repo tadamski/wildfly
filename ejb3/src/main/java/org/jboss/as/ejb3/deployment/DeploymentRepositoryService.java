@@ -39,7 +39,7 @@ import org.jboss.msc.service.StopContext;
 
 
 /**
- * Repository for information about deployed modules. This includes information on all the deployed EJB's in the module
+ * Repository for information about deployed modules. This includes information on all the deployed EJB's in the interceptorModule
  *
  * @author Stuart Douglas
  */

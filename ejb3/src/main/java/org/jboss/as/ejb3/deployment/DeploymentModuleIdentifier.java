@@ -27,7 +27,7 @@ import org.jboss.as.ejb3.logging.EjbLogger;
 import java.io.Serializable;
 
 /**
- * Identifier for a deployed module, consisting of application + distinct + module name.
+ * Identifier for a deployed interceptorModule, consisting of application + distinct + interceptorModule name.
  *
  * @author Stuart Douglas
  */

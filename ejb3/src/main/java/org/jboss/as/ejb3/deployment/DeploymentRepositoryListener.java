@@ -37,7 +37,7 @@ public interface DeploymentRepositoryListener {
     /**
      * Callback when a deployment becomes available
      * @param deployment The deployment
-     * @param moduleDeployment module deployment
+     * @param moduleDeployment interceptorModule deployment
      */
     void deploymentAvailable(final DeploymentModuleIdentifier deployment, final ModuleDeployment moduleDeployment);
 
@@ -45,7 +45,7 @@ public interface DeploymentRepositoryListener {
     /**
      * Callback when a deployment has started, i.e. all components have started
      * @param deployment The deployment
-     * @param moduleDeployment module deployment
+     * @param moduleDeployment interceptorModule deployment
      */
     void deploymentStarted(final DeploymentModuleIdentifier deployment, final ModuleDeployment moduleDeployment);
 
