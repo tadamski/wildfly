@@ -161,7 +161,7 @@ public interface EJB3SubsystemModel {
     PathElement IDENTITY_PATH = PathElement.pathElement(SERVICE, IDENTITY);
 
     //Server interceptors
-    String SERVER_INTERCEPTOR = "server-interceptors";
+    String SERVER_INTERCEPTOR = "server-interceptor";
     String MODULE = "module";
     String CLASS = "class";
     String BINDING = "binding";

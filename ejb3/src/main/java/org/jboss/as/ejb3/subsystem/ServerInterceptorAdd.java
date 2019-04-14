@@ -22,42 +22,13 @@
 
 package org.jboss.as.ejb3.subsystem;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.jboss.as.controller.*;
-import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
-import org.jboss.as.controller.registry.Resource;
-import org.jboss.as.ejb3.deployment.ServerInterceptorDependencyDeploymentUnitProcessor;
-import org.jboss.as.ejb3.deployment.processors.EjbIIOPDeploymentUnitProcessor;
-import org.jboss.as.ejb3.logging.EjbLogger;
-import org.jboss.as.ejb3.remote.LocalTransportProvider;
-import org.jboss.as.ejb3.remote.RemotingProfileService;
-import org.jboss.as.remoting.AbstractOutboundConnectionService;
+import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
 import org.jboss.as.server.deployment.Phase;
 import org.jboss.dmr.ModelNode;
-import org.jboss.dmr.Property;
-import org.jboss.ejb.client.EJBClientContext;
-import org.jboss.ejb.client.EJBTransportProvider;
-import org.jboss.modules.ModuleIdentifier;
-import org.jboss.msc.service.ServiceBuilder;
-import org.jboss.msc.service.ServiceController;
-import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.value.InjectedValue;
-import org.jboss.remoting3.RemotingOptions;
-import org.wildfly.discovery.AttributeValue;
-import org.wildfly.discovery.ServiceURL;
-import org.xnio.Option;
-import org.xnio.OptionMap;
-import org.xnio.Options;
-
-import static org.jboss.as.ejb3.logging.EjbLogger.ROOT_LOGGER;
 
 /**
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
@@ -77,6 +48,12 @@ public class ServerInterceptorAdd extends AbstractBoottimeAddStepHandler {
             protected void execute(DeploymentProcessorTarget processorTarget) {
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_EJB_INTERCEPTORS,
                         new ServerInterceptorDependencyDeploymentUnitProcessor(module));
+            }
+        }, OperationContext.Stage.RUNTIME);
+        context.addStep(new AbstractDeploymentChainStep() {
+            protected void execute(DeploymentProcessorTarget processorTarget) {
+                processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_SERVER_INTERCEPTORS,
+                        new ServerInterceptorBindingProcessor(module));
             }
         }, OperationContext.Stage.RUNTIME);
 

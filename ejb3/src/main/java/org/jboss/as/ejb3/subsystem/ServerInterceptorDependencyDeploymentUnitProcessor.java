@@ -20,9 +20,15 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.as.ejb3.deployment;
+package org.jboss.as.ejb3.subsystem;
 
-import org.jboss.as.server.deployment.*;
+
+
+import org.jboss.as.server.deployment.Attachments;
+import org.jboss.as.server.deployment.DeploymentPhaseContext;
+import org.jboss.as.server.deployment.DeploymentUnit;
+import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
+import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.server.deployment.module.ModuleDependency;
 import org.jboss.as.server.deployment.module.ModuleSpecification;
 import org.jboss.modules.Module;
@@ -32,7 +38,7 @@ import org.jboss.modules.ModuleLoader;
 /**
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
  */
-public class ServerInterceptorDependencyDeploymentUnitProcessor extends DeploymentUnitProcessor {
+public class ServerInterceptorDependencyDeploymentUnitProcessor implements DeploymentUnitProcessor {
 
     final String interceptorModule;
 
