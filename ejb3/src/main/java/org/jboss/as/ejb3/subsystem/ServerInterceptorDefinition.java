@@ -24,6 +24,7 @@ package org.jboss.as.ejb3.subsystem;
 
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.ReloadRequiredRemoveStepHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
@@ -68,8 +69,7 @@ public class ServerInterceptorDefinition extends SimpleResourceDefinition {
 
     private ServerInterceptorDefinition() {
         super(PathElement.pathElement(EJB3SubsystemModel.SERVER_INTERCEPTOR), EJB3Extension
-                .getResourceDescriptionResolver(EJB3SubsystemModel.SERVER_INTERCEPTOR), new RemotingProfileChildResourceAddHandler(
-                ATTRIBUTES.values()), new RemotingProfileChildResourceRemoveHandler());
+                .getResourceDescriptionResolver(EJB3SubsystemModel.SERVER_INTERCEPTOR), ServerInterceptorAdd.INSTANCE, ReloadRequiredRemoveStepHandler.INSTANCE);
     }
 
     @Override
@@ -79,9 +79,4 @@ public class ServerInterceptorDefinition extends SimpleResourceDefinition {
         }
     }
 
-    @Override
-    public void registerChildren(ManagementResourceRegistration resourceRegistration) {
-        super.registerChildren(resourceRegistration);
-        resourceRegistration.registerSubModel(new RemotingEjbReceiverChannelCreationOptionResource());
-    }
 }

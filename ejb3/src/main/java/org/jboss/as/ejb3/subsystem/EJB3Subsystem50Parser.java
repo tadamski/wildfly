@@ -338,19 +338,19 @@ public class EJB3Subsystem50Parser extends EJB3Subsystem40Parser {
     }
 
     protected void parseServerInterceptors(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
-
         requireNoAttributes(reader);
-
         while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
             switch (EJB3SubsystemXMLElement.forName(reader.getLocalName())) {
                 case INTERCEPTOR: {
                     parseInterceptor(reader, operations);
+                    break;
                 }
                 default: {
                     throw unexpectedElement(reader);
                 }
             }
         }
+        requireNoContent(reader);
     }
 
 

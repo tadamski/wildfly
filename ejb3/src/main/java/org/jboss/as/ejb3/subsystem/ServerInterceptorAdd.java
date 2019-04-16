@@ -38,12 +38,12 @@ public class ServerInterceptorAdd extends AbstractBoottimeAddStepHandler {
     static final ServerInterceptorAdd INSTANCE = new ServerInterceptorAdd();
 
     private ServerInterceptorAdd() {
-        super(RemotingProfileResourceDefinition.ATTRIBUTES.values());
+        super();
     }
 
     @Override
     protected void performBoottime(final OperationContext context, final ModelNode operation, final ModelNode model) throws OperationFailedException {
-        final String module = ServerInterceptorDefinition.MODULE.resolveModelAttribute(context, model).asString();
+            final String module = ServerInterceptorDefinition.MODULE.resolveModelAttribute(context, operation).asString();
         context.addStep(new AbstractDeploymentChainStep() {
             protected void execute(DeploymentProcessorTarget processorTarget) {
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_EJB_INTERCEPTORS,
