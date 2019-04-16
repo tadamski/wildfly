@@ -23,6 +23,7 @@
 package org.jboss.as.ejb3.subsystem;
 
 import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
+import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.server.AbstractDeploymentChainStep;
@@ -39,6 +40,12 @@ public class ServerInterceptorAdd extends AbstractBoottimeAddStepHandler {
 
     private ServerInterceptorAdd() {
         super();
+    }
+
+    protected void populateModel(ModelNode operation, ModelNode serverInterceptorModel) throws OperationFailedException {
+        for (AttributeDefinition attr : ServerInterceptorDefinition.ATTRIBUTES.values()) {
+            attr.validateAndSet(operation, serverInterceptorModel);
+        }
     }
 
     @Override

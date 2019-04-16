@@ -51,7 +51,7 @@ public class ServerInterceptorDefinition extends SimpleResourceDefinition {
             .build();
 
     public static final SimpleAttributeDefinition BINDING = new SimpleAttributeDefinitionBuilder(
-            EJB3SubsystemModel.BINDING, ModelType.STRING, true).setRequired(true).setAllowExpression(true)
+            EJB3SubsystemModel.BINDING, ModelType.STRING, true).setRequired(false).setAllowExpression(true)
             .build();
 
     public static final Map<String, AttributeDefinition> ATTRIBUTES;
