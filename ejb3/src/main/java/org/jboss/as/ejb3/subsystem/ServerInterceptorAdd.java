@@ -50,17 +50,18 @@ public class ServerInterceptorAdd extends AbstractBoottimeAddStepHandler {
 
     @Override
     protected void performBoottime(final OperationContext context, final ModelNode operation, final ModelNode model) throws OperationFailedException {
-            final String module = ServerInterceptorDefinition.MODULE.resolveModelAttribute(context, operation).asString();
+        final String module = ServerInterceptorDefinition.MODULE.resolveModelAttribute(context, model).asString();
         context.addStep(new AbstractDeploymentChainStep() {
             protected void execute(DeploymentProcessorTarget processorTarget) {
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_EJB_INTERCEPTORS,
                         new ServerInterceptorDependencyDeploymentUnitProcessor(module));
             }
         }, OperationContext.Stage.RUNTIME);
+        final String interceptorClass = ServerInterceptorDefinition.CLASS.resolveModelAttribute(context, model).asString();
         context.addStep(new AbstractDeploymentChainStep() {
             protected void execute(DeploymentProcessorTarget processorTarget) {
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_SERVER_INTERCEPTORS,
-                        new ServerInterceptorBindingProcessor(module));
+                        new ServerInterceptorBindingProcessor(interceptorClass));
             }
         }, OperationContext.Stage.RUNTIME);
 

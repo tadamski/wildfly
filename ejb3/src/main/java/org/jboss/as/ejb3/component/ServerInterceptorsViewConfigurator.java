@@ -111,7 +111,7 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
         } else {
             serverInterceptorsAroundTimeout = null;
         }
-        for (final InterceptorDescription interceptorDescription : ejbComponentDescription.getAllContainerInterceptors()) {
+        for (final InterceptorDescription interceptorDescription : ejbComponentDescription.getServerInterceptors()) {
             final String interceptorClassName = interceptorDescription.getInterceptorClassName();
             final Class<?> intereptorClass;
             try {

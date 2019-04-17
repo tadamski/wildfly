@@ -3,6 +3,7 @@ package org.jboss.as.ejb3.subsystem;
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.ComponentDescription;
 import org.jboss.as.ee.component.EEModuleDescription;
+import org.jboss.as.ee.component.InterceptorDescription;
 import org.jboss.as.ejb3.component.EJBComponentDescription;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
@@ -32,6 +33,7 @@ public class ServerInterceptorBindingProcessor implements DeploymentUnitProcesso
                 continue;
             }
             final EJBComponentDescription ejbComponentDescription = (EJBComponentDescription) componentDescription;
+            ejbComponentDescription.getServerInterceptors().add(new InterceptorDescription(interceptorClass));
         }
 
     }
