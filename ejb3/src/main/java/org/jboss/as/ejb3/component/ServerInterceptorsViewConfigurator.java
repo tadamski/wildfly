@@ -54,6 +54,8 @@ import org.jboss.msc.value.CachedValue;
 import org.jboss.msc.value.ConstructedValue;
 import org.jboss.msc.value.Value;
 
+import javax.interceptor.AroundInvoke;
+import javax.interceptor.AroundTimeout;
 import javax.interceptor.InvocationContext;
 import java.io.IOException;
 import java.io.InputStream;
@@ -79,7 +81,7 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
     }
 
     @Override
-    public void configure(DeploymentPhaseContext deploymentPhaseContext, ComponentConfiguration componentConfiguration, ViewDescription viewDescription, ViewConfiguration viewConfiguration) throws DeploymentUnitProcessingException {
+    public void configure(final DeploymentPhaseContext deploymentPhaseContext, final ComponentConfiguration componentConfiguration, final ViewDescription viewDescription, final ViewConfiguration viewConfiguration) throws DeploymentUnitProcessingException {
         final ComponentDescription componentDescription = componentConfiguration.getComponentDescription();
         // ideally it should always be an EJBComponentDescription when this view configurator is invoked, but let's just make sure
         if (!(componentDescription instanceof EJBComponentDescription)) {
@@ -96,15 +98,12 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
     }
 
     private void doConfigure(final DeploymentPhaseContext context, final EJBComponentDescription ejbComponentDescription, final Set<InterceptorDescription> serverInterceptors,
-                             final ViewConfiguration viewConfiguration) throws DeploymentUnitProcessingException {
+                             final ViewConfiguration viewConfiguration) {
             // apply the interceptors to the view's method.
         final DeploymentUnit deploymentUnit = context.getDeploymentUnit();
-        final EEApplicationClasses applicationClasses = deploymentUnit.getAttachment(Attachments.EE_APPLICATION_CLASSES_DESCRIPTION);
         final Module module = deploymentUnit.getAttachment(org.jboss.as.server.deployment.Attachments.MODULE);
-
-        final List<InterceptorFactory> serverInterceptorsAroundInvoke = new ArrayList<InterceptorFactory>();
-        final List<InterceptorFactory> serverInterceptorsAroundTimeout = new ArrayList<InterceptorFactory>();
-
+        final List<InterceptorFactory> serverInterceptorsAroundInvoke = new ArrayList<>();
+        final List<InterceptorFactory> serverInterceptorsAroundTimeout = new ArrayList<>();
         for (final InterceptorDescription interceptorDescription : ejbComponentDescription.getServerInterceptors()) {
             final String interceptorClassName = interceptorDescription.getInterceptorClassName();
             final Class<?> interceptorClass;
@@ -113,34 +112,11 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
             } catch (ClassNotFoundException e) {
                 throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
             }
-
-            Constructor<?> constructor;
-            try {
-                constructor = interceptorClass.getConstructor(EMPTY_CLASS_ARRAY);
-            } catch(NoSuchMethodException e){
-                //TODO correct log
-                throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
+            final Index index = buildIndexForClass(interceptorClass);
+            serverInterceptorsAroundInvoke.addAll(findAnnotatedMethods(interceptorClass, index, AroundInvoke.class));
+            if(ejbComponentDescription.isTimerServiceRequired()){
+                serverInterceptorsAroundTimeout.addAll(findAnnotatedMethods(interceptorClass, index, AroundTimeout.class));
             }
-
-            Index index = buildClassInfoForClass(interceptorClass);
-            DotName deprecated = DotName.createSimple("javax.interceptor.AroundInvoke");
-            List<AnnotationInstance> annotations = index.getAnnotations(deprecated);
-
-            for (AnnotationInstance annotation : annotations) {
-                if (annotation.target().kind() == AnnotationTarget.Kind.METHOD) {
-                    MethodInfo methodInfo = annotation.target().asMethod();
-                    try {
-                        Method aroundInvoke = interceptorClass.getMethod(methodInfo.name(), new Class[]{InvocationContext.class});
-                        InterceptorFactory aroundInvokeFactory = createInterceptorFactoryForServerInterceptor(aroundInvoke, constructor);
-                        serverInterceptorsAroundInvoke.add(aroundInvokeFactory);
-                    } catch (NoSuchMethodException e) {
-                        //TODO correct log
-                        throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
-                    }
-                }
-            }
-
-
         }
         final List<Method> viewMethods = viewConfiguration.getProxyFactory().getCachedMethods();
         for (final Method method : viewMethods) {
@@ -148,22 +124,46 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
         }
     }
 
-    private Index buildClassInfoForClass(Class<?> interceptorClass) {
-        String classNameAsResource = interceptorClass.getName().replaceAll("\\.", "/").concat(".class");
-        return indexStream(interceptorClass.getClassLoader().getResourceAsStream(classNameAsResource)).complete();
-    }
-
-
-    private Indexer indexStream(InputStream stream) {
+    private Index buildIndexForClass(final Class<?> interceptorClass) {
         try {
-            Indexer indexer = new Indexer();
+            final String classNameAsResource = interceptorClass.getName().replaceAll("\\.", "/").concat(".class");
+            final InputStream stream = interceptorClass.getClassLoader().getResourceAsStream(classNameAsResource);
+            final Indexer indexer = new Indexer();
             indexer.index(stream);
             stream.close();
-            return indexer;
+            return indexer.complete();
         } catch (IOException e) {
-            //TODO
-            throw new IllegalStateException(e);
+            //TODO CORRECT EXCEPTION
+            throw new IllegalStateException();
         }
+    }
+
+    private List<InterceptorFactory> findAnnotatedMethods(final Class<?> interceptorClass, final Index index, final Class<?> annotationClass){
+        final List<InterceptorFactory> interceptorFactories = new ArrayList<>();
+        final DotName annotationName = DotName.createSimple(annotationClass.getName());
+        final List<AnnotationInstance> annotations = index.getAnnotations(annotationName);
+
+        for (final AnnotationInstance annotation : annotations) {
+            if (annotation.target().kind() == AnnotationTarget.Kind.METHOD) {
+                final MethodInfo methodInfo = annotation.target().asMethod();
+                final Constructor<?> constructor;
+                try {
+                    constructor = interceptorClass.getConstructor(EMPTY_CLASS_ARRAY);
+                } catch (NoSuchMethodException e) {
+                    //TODO correct log
+                    throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClass.getName());
+                }
+                try {
+                    final Method aroundInvoke = interceptorClass.getMethod(methodInfo.name(), new Class[]{InvocationContext.class});
+                    final InterceptorFactory aroundInvokeFactory = createInterceptorFactoryForServerInterceptor(aroundInvoke, constructor);
+                    interceptorFactories.add(aroundInvokeFactory);
+                } catch (NoSuchMethodException e) {
+                    //TODO correct log
+                    throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClass.getName());
+                }
+            }
+        }
+        return interceptorFactories;
     }
 
     private static InterceptorFactory weaved(final Collection<InterceptorFactory> interceptorFactories) {
