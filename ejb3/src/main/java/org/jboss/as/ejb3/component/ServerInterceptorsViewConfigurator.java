@@ -43,12 +43,20 @@ import org.jboss.invocation.Interceptor;
 import org.jboss.invocation.InterceptorFactory;
 import org.jboss.invocation.InterceptorFactoryContext;
 import org.jboss.invocation.Interceptors;
+import org.jboss.jandex.AnnotationInstance;
+import org.jboss.jandex.AnnotationTarget;
+import org.jboss.jandex.DotName;
+import org.jboss.jandex.Index;
+import org.jboss.jandex.Indexer;
+import org.jboss.jandex.MethodInfo;
 import org.jboss.modules.Module;
 import org.jboss.msc.value.CachedValue;
 import org.jboss.msc.value.ConstructedValue;
 import org.jboss.msc.value.Value;
 
 import javax.interceptor.InvocationContext;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -110,25 +118,51 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
             try {
                 constructor = interceptorClass.getConstructor(EMPTY_CLASS_ARRAY);
             } catch(NoSuchMethodException e){
-                //TODO
+                //TODO correct log
                 throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
             }
 
-            try {
-                Method aroundInvoke = interceptorClass.getMethod("aroundInvoke", new Class[]{InvocationContext.class});
-                InterceptorFactory aroundInvokeFactory = createInterceptorFactoryForServerInterceptor(aroundInvoke, constructor);
-                serverInterceptorsAroundInvoke.add(aroundInvokeFactory);
-            } catch(NoSuchMethodException e){}
+            Index index = buildClassInfoForClass(interceptorClass);
+            DotName deprecated = DotName.createSimple("javax.interceptor.AroundInvoke");
+            List<AnnotationInstance> annotations = index.getAnnotations(deprecated);
 
-            try {
-                Method aroundTimeout = interceptorClass.getMethod("aroundTimeout", new Class[]{InvocationContext.class});
-                InterceptorFactory aroundTimeoutFactory = createInterceptorFactoryForServerInterceptor(aroundTimeout, constructor);
-                serverInterceptorsAroundInvoke.add(aroundTimeoutFactory);
-            } catch(NoSuchMethodException e){ }
+            for (AnnotationInstance annotation : annotations) {
+                if (annotation.target().kind() == AnnotationTarget.Kind.METHOD) {
+                    MethodInfo methodInfo = annotation.target().asMethod();
+                    try {
+                        Method aroundInvoke = interceptorClass.getMethod(methodInfo.name(), new Class[]{InvocationContext.class});
+                        InterceptorFactory aroundInvokeFactory = createInterceptorFactoryForServerInterceptor(aroundInvoke, constructor);
+                        serverInterceptorsAroundInvoke.add(aroundInvokeFactory);
+                    } catch (NoSuchMethodException e) {
+                        //TODO correct log
+                        throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
+                    }
+                }
+            }
+
+
         }
         final List<Method> viewMethods = viewConfiguration.getProxyFactory().getCachedMethods();
         for (final Method method : viewMethods) {
             viewConfiguration.addViewInterceptor(method, new UserInterceptorFactory(weaved(serverInterceptorsAroundInvoke), weaved(serverInterceptorsAroundTimeout)), InterceptorOrder.View.USER_APP_SPECIFIC_CONTAINER_INTERCEPTORS);
+        }
+    }
+
+    private Index buildClassInfoForClass(Class<?> interceptorClass) {
+        String classNameAsResource = interceptorClass.getName().replaceAll("\\.", "/").concat(".class");
+        return indexStream(interceptorClass.getClassLoader().getResourceAsStream(classNameAsResource)).complete();
+    }
+
+
+    private Indexer indexStream(InputStream stream) {
+        try {
+            Indexer indexer = new Indexer();
+            indexer.index(stream);
+            stream.close();
+            return indexer;
+        } catch (IOException e) {
+            //TODO
+            throw new IllegalStateException(e);
         }
     }
 
