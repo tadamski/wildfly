@@ -24,17 +24,13 @@ package org.jboss.as.ejb3.component;
 
 import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.component.Attachments;
-import org.jboss.as.ee.component.ClassDescriptionTraversal;
 import org.jboss.as.ee.component.ComponentConfiguration;
 import org.jboss.as.ee.component.ComponentDescription;
 import org.jboss.as.ee.component.EEApplicationClasses;
-import org.jboss.as.ee.component.EEModuleClassDescription;
-import org.jboss.as.ee.component.EEModuleDescription;
 import org.jboss.as.ee.component.InterceptorDescription;
 import org.jboss.as.ee.component.ViewConfiguration;
 import org.jboss.as.ee.component.ViewConfigurator;
 import org.jboss.as.ee.component.ViewDescription;
-import org.jboss.as.ee.component.interceptors.InterceptorClassDescription;
 import org.jboss.as.ee.component.interceptors.InterceptorOrder;
 import org.jboss.as.ee.component.interceptors.UserInterceptorFactory;
 import org.jboss.as.ee.utils.ClassLoadingUtils;
@@ -43,30 +39,24 @@ import org.jboss.as.naming.ValueManagedReference;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
-import org.jboss.as.server.deployment.reflect.ClassReflectionIndex;
-import org.jboss.as.server.deployment.reflect.ClassReflectionIndexUtil;
-import org.jboss.as.server.deployment.reflect.DeploymentReflectionIndex;
 import org.jboss.invocation.Interceptor;
 import org.jboss.invocation.InterceptorFactory;
 import org.jboss.invocation.InterceptorFactoryContext;
 import org.jboss.invocation.Interceptors;
-import org.jboss.invocation.proxy.MethodIdentifier;
 import org.jboss.modules.Module;
 import org.jboss.msc.value.CachedValue;
 import org.jboss.msc.value.ConstructedValue;
 import org.jboss.msc.value.Value;
 
+import javax.interceptor.InvocationContext;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-
-import static org.jboss.as.server.deployment.Attachments.REFLECTION_INDEX;
 
 /**
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
@@ -105,36 +95,36 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
         final Module module = deploymentUnit.getAttachment(org.jboss.as.server.deployment.Attachments.MODULE);
 
         final List<InterceptorFactory> serverInterceptorsAroundInvoke = new ArrayList<InterceptorFactory>();
-        final List<InterceptorFactory> serverInterceptorsAroundTimeout;
-        if (ejbComponentDescription.isTimerServiceRequired()) {
-            serverInterceptorsAroundTimeout = new ArrayList<InterceptorFactory>();
-        } else {
-            serverInterceptorsAroundTimeout = null;
-        }
+        final List<InterceptorFactory> serverInterceptorsAroundTimeout = new ArrayList<InterceptorFactory>();
+
         for (final InterceptorDescription interceptorDescription : ejbComponentDescription.getServerInterceptors()) {
             final String interceptorClassName = interceptorDescription.getInterceptorClassName();
-            final Class<?> intereptorClass;
+            final Class<?> interceptorClass;
             try {
-                intereptorClass = ClassLoadingUtils.loadClass(interceptorClassName, module);
+                interceptorClass = ClassLoadingUtils.loadClass(interceptorClassName, module);
             } catch (ClassNotFoundException e) {
                 throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
             }
-            // run the interceptor class (and its super class hierarchy) through the InterceptorClassDescriptionTraversal so that it can
-            // find the relevant @AroundInvoke/@AroundTimeout methods
-            final InterceptorClassDescriptionTraversal interceptorClassDescriptionTraversal = new InterceptorClassDescriptionTraversal(intereptorClass, applicationClasses, deploymentUnit, ejbComponentDescription);
-            interceptorClassDescriptionTraversal.run();
-            // now that the InterceptorClassDescriptionTraversal has done the relevant processing, keep track of the @AroundInvoke and
-            // @AroundTimeout methods applicable for this interceptor class, within a map
-            final List<InterceptorFactory> aroundInvokeInterceptorFactories = interceptorClassDescriptionTraversal.getAroundInvokeInterceptorFactories();
-            if (aroundInvokeInterceptorFactories != null) {
-                serverInterceptorsAroundInvoke.addAll(aroundInvokeInterceptorFactories);
+
+            Constructor<?> constructor;
+            try {
+                constructor = interceptorClass.getConstructor(EMPTY_CLASS_ARRAY);
+            } catch(NoSuchMethodException e){
+                //TODO
+                throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
             }
-            if (ejbComponentDescription.isTimerServiceRequired()) {
-                final List<InterceptorFactory> aroundTimeoutInterceptorFactories = interceptorClassDescriptionTraversal.getAroundTimeoutInterceptorFactories();
-                if (aroundTimeoutInterceptorFactories != null) {
-                    serverInterceptorsAroundTimeout.addAll(aroundTimeoutInterceptorFactories);
-                }
-            }
+
+            try {
+                Method aroundInvoke = interceptorClass.getMethod("aroundInvoke", new Class[]{InvocationContext.class});
+                InterceptorFactory aroundInvokeFactory = createInterceptorFactoryForServerInterceptor(aroundInvoke, constructor);
+                serverInterceptorsAroundInvoke.add(aroundInvokeFactory);
+            } catch(NoSuchMethodException e){}
+
+            try {
+                Method aroundTimeout = interceptorClass.getMethod("aroundTimeout", new Class[]{InvocationContext.class});
+                InterceptorFactory aroundTimeoutFactory = createInterceptorFactoryForServerInterceptor(aroundTimeout, constructor);
+                serverInterceptorsAroundInvoke.add(aroundTimeoutFactory);
+            } catch(NoSuchMethodException e){ }
         }
         final List<Method> viewMethods = viewConfiguration.getProxyFactory().getCachedMethods();
         for (final Method method : viewMethods) {
@@ -156,97 +146,18 @@ public class ServerInterceptorsViewConfigurator implements ViewConfigurator {
         };
     }
 
-    /**
-     * Traveses the interceptor class and its class hierarchy to find the aroundinvoke and aroundtimeout methods
-     */
-    private class InterceptorClassDescriptionTraversal extends ClassDescriptionTraversal {
-
-        private final EEModuleDescription moduleDescription;
-        private final EJBComponentDescription ejbComponentDescription;
-        private final DeploymentReflectionIndex deploymentReflectionIndex;
-        private final Class<?> interceptorClass;
-
-        private final List<InterceptorFactory> aroundInvokeInterceptorFactories = new ArrayList<InterceptorFactory>();
-        private final List<InterceptorFactory> aroundTimeoutInterceptorFactories = new ArrayList<InterceptorFactory>();
-
-        InterceptorClassDescriptionTraversal(final Class<?> interceptorClass, final EEApplicationClasses applicationClasses,
-                                             final DeploymentUnit deploymentUnit, final EJBComponentDescription ejbComponentDescription) {
-
-            super(interceptorClass, applicationClasses);
-
-            this.ejbComponentDescription = ejbComponentDescription;
-            this.deploymentReflectionIndex = deploymentUnit.getAttachment(REFLECTION_INDEX);
-            this.moduleDescription = deploymentUnit.getAttachment(Attachments.EE_MODULE_DESCRIPTION);
-            this.interceptorClass = interceptorClass;
-
-        }
-
-        @Override
-        public void handle(final Class<?> clazz, EEModuleClassDescription classDescription) throws DeploymentUnitProcessingException {
-            final InterceptorClassDescription interceptorConfig;
-            if (classDescription != null) {
-                interceptorConfig = InterceptorClassDescription.merge(classDescription.getInterceptorClassDescription(), moduleDescription.getInterceptorClassOverride(clazz.getName()));
-            } else {
-                interceptorConfig = InterceptorClassDescription.merge(null, moduleDescription.getInterceptorClassOverride(clazz.getName()));
-            }
-            // get the container-interceptor class' constructor
-            final ClassReflectionIndex interceptorClassReflectionIndex = deploymentReflectionIndex.getClassIndex(interceptorClass);
-            final Constructor<?> interceptorClassConstructor = interceptorClassReflectionIndex.getConstructor(EMPTY_CLASS_ARRAY);
-            if (interceptorClassConstructor == null) {
-                throw EeLogger.ROOT_LOGGER.defaultConstructorNotFound(interceptorClass);
-            }
-
-            final MethodIdentifier aroundInvokeMethodIdentifier = interceptorConfig.getAroundInvoke();
-            final InterceptorFactory aroundInvokeInterceptorFactory = createInterceptorFactory(clazz, aroundInvokeMethodIdentifier, interceptorClassConstructor);
-            if (aroundInvokeInterceptorFactory != null) {
-                this.aroundInvokeInterceptorFactories.add(aroundInvokeInterceptorFactory);
-            }
-
-            if (ejbComponentDescription.isTimerServiceRequired()) {
-                final MethodIdentifier aroundTimeoutMethodIdentifier = interceptorConfig.getAroundTimeout();
-                final InterceptorFactory aroundTimeoutInterceptorFactory = createInterceptorFactory(clazz, aroundTimeoutMethodIdentifier, interceptorClassConstructor);
-                if (aroundTimeoutInterceptorFactory != null) {
-                    this.aroundTimeoutInterceptorFactories.add(aroundTimeoutInterceptorFactory);
-                }
-            }
-
-        }
-
-        private InterceptorFactory createInterceptorFactory(final Class<?> clazz, final MethodIdentifier methodIdentifier, final Constructor<?> interceptorClassConstructor) throws DeploymentUnitProcessingException {
-            if (methodIdentifier == null) {
-                return null;
-            }
-            final Method method = ClassReflectionIndexUtil.findRequiredMethod(deploymentReflectionIndex, clazz, methodIdentifier);
-            if (isNotOverriden(clazz, method, this.interceptorClass, deploymentReflectionIndex)) {
-                return this.createInterceptorFactoryForContainerInterceptor(method, interceptorClassConstructor);
-            }
-            return null;
-        }
-
-        private boolean isNotOverriden(final Class<?> clazz, final Method method, final Class<?> actualClass, final DeploymentReflectionIndex deploymentReflectionIndex) throws DeploymentUnitProcessingException {
-            return Modifier.isPrivate(method.getModifiers()) || ClassReflectionIndexUtil.findRequiredMethod(deploymentReflectionIndex, actualClass, method).getDeclaringClass() == clazz;
-        }
-
-        private List<InterceptorFactory> getAroundInvokeInterceptorFactories() {
-            return this.aroundInvokeInterceptorFactories;
-        }
-
-        private List<InterceptorFactory> getAroundTimeoutInterceptorFactories() {
-            return this.aroundTimeoutInterceptorFactories;
-        }
-
-        private InterceptorFactory createInterceptorFactoryForContainerInterceptor(final Method method, final Constructor interceptorConstructor) {
-            // The managed reference is going to be ConstructedValue, using the container-interceptor's constructor
-            final ConstructedValue interceptorInstanceValue = new ConstructedValue(interceptorConstructor, Collections.<Value<?>>emptyList());
-            // we *don't* create multiple instances of the container-interceptor class, but we just reuse a single instance and it's *not*
-            // tied to the EJB component instance lifecycle.
-            final CachedValue cachedInterceptorInstanceValue = new CachedValue(interceptorInstanceValue);
-            // ultimately create the managed reference which is backed by the CachedValue
-            final ManagedReference interceptorInstanceRef = new ValueManagedReference(cachedInterceptorInstanceValue);
-            // return the ContainerInterceptorMethodInterceptorFactory which is responsible for creating an Interceptor
-            // which can invoke the container-interceptor's around-invoke/around-timeout methods
-            return new ContainerInterceptorMethodInterceptorFactory(interceptorInstanceRef, method);
-        }
+    private InterceptorFactory createInterceptorFactoryForServerInterceptor(final Method method, final Constructor interceptorConstructor) {
+        // The managed reference is going to be ConstructedValue, using the container-interceptor's constructor
+        final ConstructedValue interceptorInstanceValue = new ConstructedValue(interceptorConstructor, Collections.<Value<?>>emptyList());
+        // we *don't* create multiple instances of the container-interceptor class, but we just reuse a single instance and it's *not*
+        // tied to the EJB component instance lifecycle.
+        final CachedValue cachedInterceptorInstanceValue = new CachedValue(interceptorInstanceValue);
+        // ultimately create the managed reference which is backed by the CachedValue
+        final ManagedReference interceptorInstanceRef = new ValueManagedReference(cachedInterceptorInstanceValue);
+        // return the ContainerInterceptorMethodInterceptorFactory which is responsible for creating an Interceptor
+        // which can invoke the container-interceptor's around-invoke/around-timeout methods
+        return new ContainerInterceptorMethodInterceptorFactory(interceptorInstanceRef, method);
     }
+
 
 }

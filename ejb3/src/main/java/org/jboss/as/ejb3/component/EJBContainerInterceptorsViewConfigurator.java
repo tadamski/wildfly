@@ -125,11 +125,11 @@ public class EJBContainerInterceptorsViewConfigurator implements ViewConfigurato
             } catch (ClassNotFoundException e) {
                 throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
             }
-            // run the interceptor class (and its super class hierarchy) through the InterceptorClassDescriptionTraversal so that it can
+            // run the interceptor class (and its super class hierarchy) through the ServerInterceptorClassTraversal so that it can
             // find the relevant @AroundInvoke/@AroundTimeout methods
             final InterceptorClassDescriptionTraversal interceptorClassDescriptionTraversal = new InterceptorClassDescriptionTraversal(intereptorClass, applicationClasses, deploymentUnit, ejbComponentDescription);
             interceptorClassDescriptionTraversal.run();
-            // now that the InterceptorClassDescriptionTraversal has done the relevant processing, keep track of the @AroundInvoke and
+            // now that the ServerInterceptorClassTraversal has done the relevant processing, keep track of the @AroundInvoke and
             // @AroundTimeout methods applicable for this interceptor class, within a map
             final List<InterceptorFactory> aroundInvokeInterceptorFactories = interceptorClassDescriptionTraversal.getAroundInvokeInterceptorFactories();
             if (aroundInvokeInterceptorFactories != null) {
