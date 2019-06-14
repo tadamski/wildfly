@@ -22,6 +22,7 @@
 
 package org.jboss.as.ejb3.subsystem;
 
+import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.CLIENT_INTERCEPTORS;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_ENTITY_BEAN_INSTANCE_POOL;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_ENTITY_BEAN_OPTIMISTIC_LOCKING;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_MDB_INSTANCE_POOL;
@@ -115,6 +116,7 @@ import org.jboss.as.ejb3.deployment.processors.security.JaccEjbDeploymentProcess
 import org.jboss.as.ejb3.iiop.POARegistry;
 import org.jboss.as.ejb3.iiop.RemoteObjectSubstitutionService;
 import org.jboss.as.ejb3.iiop.stub.DynamicStubFactoryFactory;
+import org.jboss.as.ejb3.interceptor.server.ClientInterceptorCache;
 import org.jboss.as.ejb3.interceptor.server.ServerInterceptorMetaData;
 import org.jboss.as.ejb3.interceptor.server.ServerInterceptorCache;
 import org.jboss.as.ejb3.logging.EjbLogger;
@@ -404,6 +406,30 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
             }, OperationContext.Stage.RUNTIME);
         }
 
+        if (model.hasDefined(CLIENT_INTERCEPTORS)){
+            final List<ServerInterceptorMetaData> clientInterceptors = new ArrayList<>();
+
+            final ModelNode clientInterceptorsNode = model.get(CLIENT_INTERCEPTORS);
+            for(final ModelNode clientInterceptor: clientInterceptorsNode.asList()) {
+                clientInterceptors.add(new ServerInterceptorMetaData(clientInterceptor.get("module").asString(), clientInterceptor.get("class").asString()));
+            }
+
+            context.addStep(new AbstractDeploymentChainStep() {
+                protected void execute(DeploymentProcessorTarget processorTarget) {
+                    processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_EJB_SERVER_INTERCEPTORS,
+                            new ServerInterceptorsDependenciesDeploymentUnitProcessor(clientInterceptors));
+                }
+            }, OperationContext.Stage.RUNTIME);
+
+            final ClientInterceptorCache clientInterceptorCache = new ClientInterceptorCache(clientInterceptors);
+            context.addStep(new AbstractDeploymentChainStep() {
+                protected void execute(DeploymentProcessorTarget processorTarget) {
+                    processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.POST_MODULE_EJB_SERVER_INTERCEPTORS,
+                            new ClientInterceptorsBindingsProcessor(clientInterceptorCache));
+                }
+            }, OperationContext.Stage.RUNTIME);
+        }
+
         ExceptionLoggingWriteHandler.INSTANCE.updateOrCreateDefaultExceptionLoggingEnabledService(context, model);
 
         final ServiceTarget serviceTarget = context.getServiceTarget();
@@ -467,9 +493,31 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
         }
         configuratorBuilder.setInitialMode(ServiceController.Mode.ACTIVE).install();
 
+//        if (ejbSubsystemModel.hasDefined(CLIENT_INTERCEPTORS)){
+//            try {
+//                final ModuleLoader moduleLoader = Module.getBootModuleLoader();
+//                final Module ejbModule = moduleLoader.loadModule("org.jboss.as.ejb3");
+//                final List<EJBClientInterceptor> clientInterceptors = new ArrayList<>();
+//
+//                final ModelNode clientInterceptorsNode = ejbSubsystemModel.get(CLIENT_INTERCEPTORS);
+//                for (final ModelNode clientInterceptor : clientInterceptorsNode.asList()) {
+//                    final String interceptorClass = clientInterceptor.get("class").asString();
+//                    final String interceptorModule = clientInterceptor.get("module").asString();
+//                    final Module pies = moduleLoader.loadModule(interceptorModule);
+//                    pies.getClassLoader().loadClass(interceptorClass);
+//                    Class<?> clazz = EJB3SubsystemAdd.class.getClassLoader().loadClass(interceptorClass);
+//                    clientInterceptors.add((EJBClientInterceptor) clazz.newInstance());
+//
+//                }
+//            } catch (Exception e) {
+//                throw new OperationFailedException(e);
+//            }
+//        }
+
 
         //TODO: This should be managed
         final EJBClientContextService clientContextService = new EJBClientContextService(true);
+
         final ServiceBuilder<EJBClientContextService> clientContextServiceBuilder = context.getServiceTarget().addService(EJBClientContextService.DEFAULT_SERVICE_NAME, clientContextService);
 
         clientContextServiceBuilder.addDependency(EJBClientConfiguratorService.SERVICE_NAME, EJBClientConfiguratorService.class, clientContextService.getConfiguratorServiceInjector());

@@ -295,6 +295,16 @@ public class EJB3SubsystemXMLPersister implements XMLElementWriter<SubsystemMars
             }
             writer.writeEndElement();
         }
+        if (model.hasDefined(CLIENT_INTERCEPTORS)) {
+            writer.writeStartElement(EJB3SubsystemXMLElement.CLIENT_INTERCEPTORS.getLocalName());
+            for (final ModelNode interceptor : model.get(CLIENT_INTERCEPTORS).asList()) {
+                writer.writeStartElement(EJB3SubsystemXMLElement.INTERCEPTOR.getLocalName());
+                writer.writeAttribute(EJB3SubsystemXMLAttribute.MODULE.getLocalName(), interceptor.get(EJB3SubsystemXMLAttribute.MODULE.getLocalName()).asString());
+                writer.writeAttribute(EJB3SubsystemXMLAttribute.CLASS.getLocalName(), interceptor.get(EJB3SubsystemXMLAttribute.CLASS.getLocalName()).asString());
+                writer.writeEndElement();
+            }
+            writer.writeEndElement();
+        }
     }
 
     private void writeIIOP(final XMLExtendedStreamWriter writer, final ModelNode model) throws XMLStreamException {
