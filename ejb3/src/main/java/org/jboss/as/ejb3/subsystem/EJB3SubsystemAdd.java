@@ -393,7 +393,7 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
             context.addStep(new AbstractDeploymentChainStep() {
                 protected void execute(DeploymentProcessorTarget processorTarget) {
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_EJB_SERVER_INTERCEPTORS,
-                            new ServerInterceptorsDependenciesDeploymentUnitProcessor(serverInterceptors));
+                            new StaticInterceptorsDependenciesDeploymentUnitProcessor(serverInterceptors));
                 }
             }, OperationContext.Stage.RUNTIME);
 
@@ -417,7 +417,7 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
             context.addStep(new AbstractDeploymentChainStep() {
                 protected void execute(DeploymentProcessorTarget processorTarget) {
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_EJB_SERVER_INTERCEPTORS,
-                            new ServerInterceptorsDependenciesDeploymentUnitProcessor(clientInterceptors));
+                            new StaticInterceptorsDependenciesDeploymentUnitProcessor(clientInterceptors));
                 }
             }, OperationContext.Stage.RUNTIME);
 

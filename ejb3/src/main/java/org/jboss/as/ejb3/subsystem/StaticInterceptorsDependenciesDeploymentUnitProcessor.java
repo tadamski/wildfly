@@ -42,11 +42,11 @@ import java.util.HashSet;
 /**
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
  */
-public class ServerInterceptorsDependenciesDeploymentUnitProcessor implements DeploymentUnitProcessor {
+public class StaticInterceptorsDependenciesDeploymentUnitProcessor implements DeploymentUnitProcessor {
 
     final Collection<String> interceptorModules = new HashSet<>();
 
-    public ServerInterceptorsDependenciesDeploymentUnitProcessor(final Collection<ServerInterceptorMetaData> serverInterceptors){
+    public StaticInterceptorsDependenciesDeploymentUnitProcessor(final Collection<ServerInterceptorMetaData> serverInterceptors){
         for(final ServerInterceptorMetaData si: serverInterceptors){
             interceptorModules.add(si.getModule());
         }
