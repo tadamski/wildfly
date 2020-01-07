@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
+ * Copyright 2020, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -32,51 +32,39 @@ import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
-import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 
 /**
- * {@link org.jboss.as.controller.ResourceDefinition} for remoting profiles.
- *
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
  */
-public class RemotingProfileResourceDefinition extends SimpleResourceDefinition {
+public class RemoteHttpConnectionDefinition extends SimpleResourceDefinition {
 
-    public static final SimpleAttributeDefinition EXCLUDE_LOCAL_RECEIVER = new SimpleAttributeDefinitionBuilder(
-            EJB3SubsystemModel.EXCLUDE_LOCAL_RECEIVER, ModelType.BOOLEAN, true).setAllowExpression(true)
-            .setDefaultValue(ModelNode.FALSE).build();
-
-    public static final SimpleAttributeDefinition LOCAL_RECEIVER_PASS_BY_VALUE = new SimpleAttributeDefinitionBuilder(
-            EJB3SubsystemModel.LOCAL_RECEIVER_PASS_BY_VALUE, ModelType.BOOLEAN, true).setAllowExpression(true).build();
+    public static final SimpleAttributeDefinition URI = new SimpleAttributeDefinitionBuilder(
+            EJB3SubsystemModel.URI, ModelType.STRING).setRequired(true).setAllowExpression(true)
+            .build();
 
     public static final Map<String, AttributeDefinition> ATTRIBUTES;
 
     static {
         Map<String, AttributeDefinition> map = new LinkedHashMap<String, AttributeDefinition>();
-        map.put(EXCLUDE_LOCAL_RECEIVER.getName(), EXCLUDE_LOCAL_RECEIVER);
-        map.put(LOCAL_RECEIVER_PASS_BY_VALUE.getName(), LOCAL_RECEIVER_PASS_BY_VALUE);
-        map.put(StaticEJBDiscoveryDefinition.STATIC_EJB_DISCOVERY, StaticEJBDiscoveryDefinition.INSTANCE);
+        map.put(URI.getName(), URI);
 
         ATTRIBUTES = Collections.unmodifiableMap(map);
     }
 
-    public static final RemotingProfileResourceDefinition INSTANCE = new RemotingProfileResourceDefinition();
+    public static final RemoteHttpConnectionDefinition INSTANCE = new RemoteHttpConnectionDefinition();
 
-    private RemotingProfileResourceDefinition() {
-        super(PathElement.pathElement(EJB3SubsystemModel.REMOTING_PROFILE), EJB3Extension
-                .getResourceDescriptionResolver(EJB3SubsystemModel.REMOTING_PROFILE), RemotingProfileAdd.INSTANCE, RemotingProfileRemove.INSTANCE);
-    }
-
-    @Override
-    public void registerChildren(ManagementResourceRegistration subsystemRegistration) {
-        subsystemRegistration.registerSubModel(RemotingEjbReceiverDefinition.INSTANCE);
-        subsystemRegistration.registerSubModel(RemoteHttpConnectionDefinition.INSTANCE);
+    private RemoteHttpConnectionDefinition() {
+        super(PathElement.pathElement(EJB3SubsystemModel.REMOTE_HTTP_CONNECTION), EJB3Extension
+                .getResourceDescriptionResolver(EJB3SubsystemModel.REMOTE_HTTP_CONNECTION), new RemotingProfileChildResourceAddHandler(
+                ATTRIBUTES.values()), new RemotingProfileChildResourceRemoveHandler());
     }
 
     @Override
     public void registerAttributes(ManagementResourceRegistration resourceRegistration) {
-        for (AttributeDefinition attr : ATTRIBUTES.values()) {
+        for (final AttributeDefinition attr : ATTRIBUTES.values()) {
             resourceRegistration.registerReadWriteAttribute(attr, null, new RemotingProfileResourceChildWriteAttributeHandler(attr));
         }
     }
 }
+
