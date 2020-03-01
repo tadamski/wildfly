@@ -91,9 +91,9 @@ public class RemoteLocalCallProfileTestCase {
             op2.get(OP).set(ADD);
             op2.get(OP_ADDR).add(SUBSYSTEM, "ejb3");
             op2.get(OP_ADDR).add("remoting-profile", "test-profile");
-            op2.get(OP_ADDR).add("remoting-ejb-receiver", "test-receiver");
+            op2.get(OP_ADDR).add("remote-http-connection", "test-connection");
 
-            op2.get("outbound-connection-ref").set("remote-ejb-connection");
+            op2.get("uri").set("http://127.0.0.1:8180/wildfly-services");
 
             op2.get(OPERATION_HEADERS).get(ALLOW_RESOURCE_SERVICE_RESTART).set(true);
 
@@ -127,6 +127,7 @@ public class RemoteLocalCallProfileTestCase {
     public static Archive<?> deployment1() {
         JavaArchive jar = createJar(ARCHIVE_NAME_CLIENT);
         jar.addClasses(RemoteLocalCallProfileTestCase.class);
+        jar.addAsResource("META-INF/wildfly-config.xml", "wildfly-config.xml");
         jar.addAsManifestResource("META-INF/jboss-ejb-client-profile.xml", "jboss-ejb-client.xml")
                 .addAsManifestResource(createPermissionsXmlAsset(createFilePermission("read,write",
                         "jbossas.multinode.client", Arrays.asList("standalone", "data", "ejb-xa-recovery")),
