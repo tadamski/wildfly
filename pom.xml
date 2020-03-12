@@ -368,7 +368,7 @@
         <version.org.jboss.arquillian.core>1.4.0.Final</version.org.jboss.arquillian.core>
         <version.org.jboss.arquillian.testng>1.1.13.Final</version.org.jboss.arquillian.testng>
         <version.org.jboss.common.jboss-common-beans>2.0.1.Final</version.org.jboss.common.jboss-common-beans>
-        <version.org.jboss.ejb-client>4.0.30.Final</version.org.jboss.ejb-client>
+        <version.org.jboss.ejb-client>4.0.31.Final-SNAPSHOT</version.org.jboss.ejb-client>
         <version.org.jboss.ejb-client-legacy>3.0.3.Final</version.org.jboss.ejb-client-legacy>
         <version.org.jboss.ejb3.ext-api>2.3.0.Final</version.org.jboss.ejb3.ext-api>
         <version.org.jboss.genericjms>2.0.2.Final</version.org.jboss.genericjms>
@@ -433,9 +433,9 @@
         <version.org.syslog4j>0.9.30</version.org.syslog4j>
         <version.org.testng>6.9.10</version.org.testng>
         <version.org.wildfly.arquillian>2.2.0.Final</version.org.wildfly.arquillian>
-        <version.org.wildfly.core>11.0.0.Beta10</version.org.wildfly.core>
+        <version.org.wildfly.core>11.0.0.CR1-SNAPSHOT</version.org.wildfly.core>
         <version.org.wildfly.extras.creaper>1.6.1</version.org.wildfly.extras.creaper>
-        <version.org.wildfly.http-client>1.0.20.Final</version.org.wildfly.http-client>
+        <version.org.wildfly.http-client>1.0.21.Final-SNAPSHOT</version.org.wildfly.http-client>
         <version.org.wildfly.naming-client>1.0.12.Final</version.org.wildfly.naming-client>
         <version.org.wildfly.transaction.client>1.1.9.Final</version.org.wildfly.transaction.client>
         <version.org.yaml.snakeyaml>1.24</version.org.yaml.snakeyaml>

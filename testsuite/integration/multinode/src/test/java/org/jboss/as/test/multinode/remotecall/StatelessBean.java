@@ -78,7 +78,7 @@ public class StatelessBean {
         InitialContext jndiContext = getInitialContext();
         log.trace("Calling Remote... " + jndiContext.getEnvironment());
         StatelessRemote stateless = (StatelessRemote) jndiContext.lookup("ejb:/" + RemoteLocalCallTestCase.ARCHIVE_NAME_SERVER
-                + "//" + StatelessBean.class.getSimpleName() + "!" + StatelessRemote.class.getName());
+                + "//" + "bajobongo" + "!" + StatelessRemote.class.getName());
         return stateless.method();
     }
 
