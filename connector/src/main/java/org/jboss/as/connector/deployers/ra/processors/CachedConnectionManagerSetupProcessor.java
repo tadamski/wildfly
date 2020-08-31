@@ -22,12 +22,17 @@
 
 package org.jboss.as.connector.deployers.ra.processors;
 
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import javax.resource.ResourceException;
+import javax.transaction.Transaction;
 
 import org.jboss.as.connector.util.ConnectorServices;
 import org.jboss.as.ee.component.Attachments;
@@ -44,6 +49,8 @@ import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
 import org.jboss.msc.value.InjectedValue;
+import org.wildfly.transaction.client.AbstractTransaction;
+import org.wildfly.transaction.client.ContextTransactionManager;
 
 /**
  * Setup processor that adds sets operations for the cached connection manager. These operations are run around
@@ -87,6 +94,8 @@ public class CachedConnectionManagerSetupProcessor implements DeploymentUnitProc
 
         private static final Set<?> unsharable = new HashSet<Object>();
 
+        private final Deque<Transaction> transactionStack = new ArrayDeque<>();
+
         private CachedConnectionManagerSetupAction(final ServiceName serviceName) {
             this.serviceName = serviceName;
         }
@@ -99,9 +108,14 @@ public class CachedConnectionManagerSetupProcessor implements DeploymentUnitProc
                 if (noTxCcm != null) {
                     noTxCcm.pushMetaAwareObject(this, unsharable);
                 }
-                final CachedConnectionManager connectionManager = cachedConnectionManager.getOptionalValue();
-                if (connectionManager != null) {
-                    connectionManager.pushMetaAwareObject(this, unsharable);
+                final ContextTransactionManager tm = ContextTransactionManager.getInstance();
+                Transaction tx = tm.getTransaction();
+                if(!transactionStack.peek().equals(tx) {
+                    final CachedConnectionManager connectionManager = cachedConnectionManager.getOptionalValue();
+                    if (connectionManager != null) {
+                        connectionManager.pushMetaAwareObject(this, unsharable);
+                    }
+                    transactionStack.push(tx);
                 }
             } catch (ResourceException e) {
                 throw new RuntimeException(e);
