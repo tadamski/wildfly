@@ -79,9 +79,13 @@ public class Constants {
 
     private static final String CAPACITY_INCREMENTER_CLASS_NAME = "capacity-incrementer-class";
 
+    private static final String CAPACITY_INCREMENTER_MODULE_NAME = "capacity-incrementer-module";
+
     private static final String CAPACITY_INCREMENTER_PROPERTIES_NAME = "capacity-incrementer-properties";
 
     private static final String CAPACITY_DECREMENTER_CLASS_NAME = "capacity-decrementer-class";
+
+    private static final String CAPACITY_DECREMENTER_MODULE_NAME = "capacity-decrementer-module";
 
     private static final String CAPACITY_DECREMENTER_PROPERTIES_NAME = "capacity-decrementer-properties";
 
@@ -155,6 +159,12 @@ public class Constants {
             .setRestartAllServices()
             .build();
 
+    public static SimpleAttributeDefinition CAPACITY_INCREMENTER_MODULE = new SimpleAttributeDefinitionBuilder(CAPACITY_INCREMENTER_MODULE_NAME, ModelType.STRING, true)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setAllowExpression(true)
+            .setRestartAllServices()
+            .build();
+
     public static PropertiesAttributeDefinition CAPACITY_INCREMENTER_PROPERTIES = new PropertiesAttributeDefinition.Builder(CAPACITY_INCREMENTER_PROPERTIES_NAME, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Tag.CONFIG_PROPERTY.getLocalName())
             .setRequired(false)
@@ -175,6 +185,12 @@ public class Constants {
             .build();
 
     public static SimpleAttributeDefinition CAPACITY_DECREMENTER_CLASS = new SimpleAttributeDefinitionBuilder(CAPACITY_DECREMENTER_CLASS_NAME, ModelType.STRING, true)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setAllowExpression(true)
+            .setRestartAllServices()
+            .build();
+
+    public static SimpleAttributeDefinition CAPACITY_DECREMENTER_MODULE = new SimpleAttributeDefinitionBuilder(CAPACITY_DECREMENTER_MODULE_NAME, ModelType.STRING, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
             .setAllowExpression(true)
             .setRestartAllServices()

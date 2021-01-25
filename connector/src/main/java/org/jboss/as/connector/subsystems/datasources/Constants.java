@@ -139,6 +139,8 @@ public class Constants {
 
     private static final String CONNECTION_LISTENER_CLASS_NAME = "connection-listener-class";
 
+    private static final String CONNECTION_LISTENER_MODULE_NAME = "connection-listener-module";
+
     private static final String CONNECTION_LISTENER_PROPERTY_NAME = "connection-listener-property";
 
     private static final String SETTXQUERYTIMEOUT_NAME = "set-tx-query-timeout";
@@ -167,6 +169,8 @@ public class Constants {
 
     private static final String VALID_CONNECTION_CHECKER_CLASSNAME_NAME = "valid-connection-checker-class-name";
 
+    private static final String VALID_CONNECTION_CHECKER_MODULENAME_NAME = "valid-connection-checker-module-name";
+
     private static final String CHECKVALIDCONNECTIONSQL_NAME = "check-valid-connection-sql";
 
     private static final String VALIDATEONMATCH_NAME = "validate-on-match";
@@ -177,7 +181,11 @@ public class Constants {
 
     private static final String STALECONNECTIONCHECKERCLASSNAME_NAME = "stale-connection-checker-class-name";
 
+    private static final String STALECONNECTIONCHECKERMODULENAME_NAME = "stale-connection-checker-class-name";
+
     private static final String EXCEPTIONSORTERCLASSNAME_NAME = "exception-sorter-class-name";
+
+    private static final String EXCEPTIONSORTERMODULENAME_NAME = "exception-sorter-module-name";
 
     private static final String XADATASOURCEPROPERTIES_NAME = "xa-datasource-properties";
 
@@ -203,6 +211,8 @@ public class Constants {
 
     private static final String REAUTHPLUGIN_CLASSNAME_NAME = "reauth-plugin-class-name";
 
+    private static final String REAUTHPLUGIN_MODULENAME_NAME = "reauth-plugin-module-name";
+
     private static final String REAUTHPLUGIN_PROPERTIES_NAME = "reauth-plugin-properties";
 
     private static final String RECOVERY_USERNAME_NAME = "recovery-username";
@@ -216,6 +226,8 @@ public class Constants {
     private static final String RECOVERY_AUTHENTICATION_CONTEXT_NAME = "recovery-authentication-context";
 
     private static final String RECOVER_PLUGIN_CLASSNAME_NAME = "recovery-plugin-class-name";
+
+    private static final String RECOVER_PLUGIN_MODULENAME_NAME = "recovery-plugin-module-name";
 
     private static final String RECOVER_PLUGIN_PROPERTIES_NAME = "recovery-plugin-properties";
 
@@ -504,6 +516,14 @@ public class Constants {
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
             .setRestartAllServices()
             .build();
+
+    static SimpleAttributeDefinition CONNECTION_LISTENER_MODULE = new SimpleAttributeDefinitionBuilder(CONNECTION_LISTENER_MODULE_NAME, ModelType.STRING)
+            .setAllowExpression(true)
+            .setRequired(false)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setRestartAllServices()
+            .build();
+
     static PropertiesAttributeDefinition CONNECTION_LISTENER_PROPERTIES = new PropertiesAttributeDefinition.Builder(CONNECTION_LISTENER_PROPERTY_NAME, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Tag.CONFIG_PROPERTY.getLocalName())
             .setRequired(false)
@@ -549,6 +569,12 @@ public class Constants {
             .setRestartAllServices()
             .build();
 
+    static SimpleAttributeDefinition EXCEPTION_SORTER_MODULENAME = new SimpleAttributeDefinitionBuilder(EXCEPTIONSORTERMODULENAME_NAME, ModelType.STRING, true)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setAllowExpression(true)
+            .setRestartAllServices()
+            .build();
+
     static PropertiesAttributeDefinition EXCEPTION_SORTER_PROPERTIES = new PropertiesAttributeDefinition.Builder(EXCEPTIONSORTER_PROPERTIES_NAME, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Tag.CONFIG_PROPERTY.getLocalName())
             .setAllowExpression(true)
@@ -563,6 +589,12 @@ public class Constants {
             .setRestartAllServices()
             .build();
 
+    static SimpleAttributeDefinition STALE_CONNECTION_CHECKER_MODULENAME = new SimpleAttributeDefinitionBuilder(STALECONNECTIONCHECKERMODULENAME_NAME, ModelType.STRING, true)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setAllowExpression(true)
+            .setRestartAllServices()
+            .build();
+
     static PropertiesAttributeDefinition STALE_CONNECTION_CHECKER_PROPERTIES = new PropertiesAttributeDefinition.Builder(STALECONNECTIONCHECKER_PROPERTIES_NAME, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Tag.CONFIG_PROPERTY.getLocalName())
             .setRequired(false)
@@ -572,6 +604,12 @@ public class Constants {
             .build();
 
     static SimpleAttributeDefinition VALID_CONNECTION_CHECKER_CLASSNAME = new SimpleAttributeDefinitionBuilder(VALID_CONNECTION_CHECKER_CLASSNAME_NAME, ModelType.STRING, true)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setAllowExpression(true)
+            .setRestartAllServices()
+            .build();
+
+    static SimpleAttributeDefinition VALID_CONNECTION_CHECKER_MODULENAME = new SimpleAttributeDefinitionBuilder(VALID_CONNECTION_CHECKER_MODULENAME_NAME, ModelType.STRING, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
             .setAllowExpression(true)
             .setRestartAllServices()
@@ -653,6 +691,12 @@ public class Constants {
 
     static SimpleAttributeDefinition REAUTH_PLUGIN_CLASSNAME = new SimpleAttributeDefinitionBuilder(REAUTHPLUGIN_CLASSNAME_NAME, ModelType.STRING, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setAllowExpression(true)
+            .setRestartAllServices()
+            .build();
+
+    static SimpleAttributeDefinition REAUTH_PLUGIN_MODULENAME = new SimpleAttributeDefinitionBuilder(REAUTHPLUGIN_MODULENAME_NAME, ModelType.STRING, true)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.MODULE_NAME.getLocalName())
             .setAllowExpression(true)
             .setRestartAllServices()
             .build();
@@ -771,6 +815,12 @@ public class Constants {
 
     static SimpleAttributeDefinition RECOVER_PLUGIN_CLASSNAME = new SimpleAttributeDefinitionBuilder(RECOVER_PLUGIN_CLASSNAME_NAME, ModelType.STRING, true)
             .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.CLASS_NAME.getLocalName())
+            .setAllowExpression(true)
+            .setRestartAllServices()
+            .build();
+
+    static SimpleAttributeDefinition RECOVER_PLUGIN_MODULENAME = new SimpleAttributeDefinitionBuilder(RECOVER_PLUGIN_MODULENAME_NAME, ModelType.STRING, true)
+            .setXmlName(org.jboss.jca.common.api.metadata.common.Extension.Attribute.MODULE_NAME.getLocalName())
             .setAllowExpression(true)
             .setRestartAllServices()
             .build();

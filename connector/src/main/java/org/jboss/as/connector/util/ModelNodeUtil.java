@@ -42,15 +42,16 @@ public class ModelNodeUtil {
     }
 
     public static Extension extractExtension(final OperationContext operationContext, final ModelNode dataSourceNode,
-                                             final SimpleAttributeDefinition className, final PropertiesAttributeDefinition propertyName)
+                                             final SimpleAttributeDefinition classNameAttribute, final SimpleAttributeDefinition moduleNameAttribute, final PropertiesAttributeDefinition propertyName)
             throws ValidateException, OperationFailedException {
-        if (dataSourceNode.hasDefined(className.getName())) {
-            String exceptionSorterClassName = getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, className);
+        if (dataSourceNode.hasDefined(classNameAttribute.getName())) {
+            String exceptionSorterClassName = getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, classNameAttribute);
+            String moduleName = getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, moduleNameAttribute);
 
             Map<String, String> unwrapped = propertyName.unwrap(operationContext, dataSourceNode);
             Map<String, String> exceptionSorterProperty = unwrapped.size() > 0 ? unwrapped : null;
 
-            return new Extension(exceptionSorterClassName, exceptionSorterProperty);
+            return new Extension(exceptionSorterClassName, moduleName, exceptionSorterProperty);
         } else {
             return null;
         }

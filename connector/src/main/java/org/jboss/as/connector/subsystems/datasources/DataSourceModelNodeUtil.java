@@ -26,8 +26,10 @@ import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUND
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUNDVALIDATIONMILLIS;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BLOCKING_TIMEOUT_WAIT_MILLIS;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.CAPACITY_DECREMENTER_CLASS;
+import static org.jboss.as.connector.subsystems.common.pool.Constants.CAPACITY_DECREMENTER_MODULE;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.CAPACITY_DECREMENTER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.CAPACITY_INCREMENTER_CLASS;
+import static org.jboss.as.connector.subsystems.common.pool.Constants.CAPACITY_INCREMENTER_MODULE;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.CAPACITY_INCREMENTER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.IDLETIMEOUTMINUTES;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.INITIAL_POOL_SIZE;
@@ -45,6 +47,7 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.AUTHENTICA
 import static org.jboss.as.connector.subsystems.datasources.Constants.CHECK_VALID_CONNECTION_SQL;
 import static org.jboss.as.connector.subsystems.datasources.Constants.CONNECTABLE;
 import static org.jboss.as.connector.subsystems.datasources.Constants.CONNECTION_LISTENER_CLASS;
+import static org.jboss.as.connector.subsystems.datasources.Constants.CONNECTION_LISTENER_MODULE;
 import static org.jboss.as.connector.subsystems.datasources.Constants.CONNECTION_LISTENER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.CONNECTION_URL;
 import static org.jboss.as.connector.subsystems.datasources.Constants.DATASOURCE_CLASS;
@@ -54,6 +57,7 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.ELYTRON_EN
 import static org.jboss.as.connector.subsystems.datasources.Constants.ENABLED;
 import static org.jboss.as.connector.subsystems.datasources.Constants.ENLISTMENT_TRACE;
 import static org.jboss.as.connector.subsystems.datasources.Constants.EXCEPTION_SORTER_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.EXCEPTION_SORTER_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.EXCEPTION_SORTER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.INTERLEAVING;
 import static org.jboss.as.connector.subsystems.datasources.Constants.JNDI_NAME;
@@ -68,12 +72,14 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.PREPARED_S
 import static org.jboss.as.connector.subsystems.datasources.Constants.QUERY_TIMEOUT;
 import static org.jboss.as.connector.subsystems.datasources.Constants.REAUTHPLUGIN_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.REAUTH_PLUGIN_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.REAUTH_PLUGIN_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVERY_AUTHENTICATION_CONTEXT;
 import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVERY_ELYTRON_ENABLED;
 import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVERY_PASSWORD;
 import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVERY_SECURITY_DOMAIN;
 import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVERY_USERNAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVER_PLUGIN_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVER_PLUGIN_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.RECOVER_PLUGIN_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.SAME_RM_OVERRIDE;
 import static org.jboss.as.connector.subsystems.datasources.Constants.SECURITY_DOMAIN;
@@ -81,6 +87,7 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.SET_TX_QUE
 import static org.jboss.as.connector.subsystems.datasources.Constants.SHARE_PREPARED_STATEMENTS;
 import static org.jboss.as.connector.subsystems.datasources.Constants.SPY;
 import static org.jboss.as.connector.subsystems.datasources.Constants.STALE_CONNECTION_CHECKER_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.STALE_CONNECTION_CHECKER_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.STALE_CONNECTION_CHECKER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.TRACKING;
 import static org.jboss.as.connector.subsystems.datasources.Constants.TRACK_STATEMENTS;
@@ -94,6 +101,7 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.USE_JAVA_C
 import static org.jboss.as.connector.subsystems.datasources.Constants.USE_TRY_LOCK;
 import static org.jboss.as.connector.subsystems.datasources.Constants.VALIDATE_ON_MATCH;
 import static org.jboss.as.connector.subsystems.datasources.Constants.VALID_CONNECTION_CHECKER_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.VALID_CONNECTION_CHECKER_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.VALID_CONNECTION_CHECKER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.WRAP_XA_RESOURCE;
 import static org.jboss.as.connector.subsystems.datasources.Constants.XA_DATASOURCE_CLASS;
@@ -166,10 +174,10 @@ class DataSourceModelNodeUtil {
         final String flushStrategyString = ModelNodeUtil.getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, POOL_FLUSH_STRATEGY);
         final FlushStrategy flushStrategy = FlushStrategy.forName(flushStrategyString); // TODO relax case sensitivity
         final Boolean allowMultipleUsers = ModelNodeUtil.getBooleanIfSetOrGetDefault(operationContext, dataSourceNode, ALLOW_MULTIPLE_USERS);
-        Extension incrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_INCREMENTER_CLASS, CAPACITY_INCREMENTER_PROPERTIES);
-        Extension decrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_DECREMENTER_CLASS, CAPACITY_DECREMENTER_PROPERTIES);
+        Extension incrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_INCREMENTER_CLASS, CAPACITY_INCREMENTER_MODULE, CAPACITY_INCREMENTER_PROPERTIES);
+        Extension decrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_DECREMENTER_CLASS, CAPACITY_DECREMENTER_MODULE, CAPACITY_DECREMENTER_PROPERTIES);
         final Capacity capacity = new Capacity(incrementer, decrementer);
-        final Extension connectionListener = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CONNECTION_LISTENER_CLASS, CONNECTION_LISTENER_PROPERTIES);
+        final Extension connectionListener = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CONNECTION_LISTENER_CLASS, CONNECTION_LISTENER_MODULE, CONNECTION_LISTENER_PROPERTIES);
 
         final DsPool pool = new DsPoolImpl(minPoolSize, initialPoolSize, maxPoolSize, prefill, useStrictMin, flushStrategy, allowMultipleUsers, capacity, fair, connectionListener);
 
@@ -181,7 +189,7 @@ class DataSourceModelNodeUtil {
         final boolean elytronEnabled = ModelNodeUtil.getBooleanIfSetOrGetDefault(operationContext, dataSourceNode, ELYTRON_ENABLED);
         final String authenticationContext = ModelNodeUtil.getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, AUTHENTICATION_CONTEXT);
 
-        final Extension reauthPlugin = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, REAUTH_PLUGIN_CLASSNAME, REAUTHPLUGIN_PROPERTIES);
+        final Extension reauthPlugin = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, REAUTH_PLUGIN_CLASSNAME, REAUTH_PLUGIN_MODULENAME, REAUTHPLUGIN_PROPERTIES);
 
         final DsSecurity security = new DsSecurityImpl(username, password,
                 elytronEnabled? authenticationContext: securityDomain, elytronEnabled, credentialSourceSupplier, reauthPlugin);
@@ -213,11 +221,12 @@ class DataSourceModelNodeUtil {
 
         final String checkValidConnectionSql = ModelNodeUtil.getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, CHECK_VALID_CONNECTION_SQL);
 
-        final Extension exceptionSorter = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, EXCEPTION_SORTER_CLASSNAME, EXCEPTION_SORTER_PROPERTIES);
+        final Extension exceptionSorter = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, EXCEPTION_SORTER_CLASSNAME,
+                EXCEPTION_SORTER_MODULENAME, EXCEPTION_SORTER_PROPERTIES);
         final Extension staleConnectionChecker = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, STALE_CONNECTION_CHECKER_CLASSNAME,
-                STALE_CONNECTION_CHECKER_PROPERTIES);
+                STALE_CONNECTION_CHECKER_MODULENAME, STALE_CONNECTION_CHECKER_PROPERTIES);
         final Extension validConnectionChecker = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, VALID_CONNECTION_CHECKER_CLASSNAME,
-                VALID_CONNECTION_CHECKER_PROPERTIES);
+                VALID_CONNECTION_CHECKER_MODULENAME, VALID_CONNECTION_CHECKER_PROPERTIES);
 
         Long backgroundValidationMillis = ModelNodeUtil.getLongIfSetOrGetDefault(operationContext, dataSourceNode, BACKGROUNDVALIDATIONMILLIS);
         final Boolean backgroundValidation = ModelNodeUtil.getBooleanIfSetOrGetDefault(operationContext, dataSourceNode, BACKGROUNDVALIDATION);
@@ -268,10 +277,10 @@ class DataSourceModelNodeUtil {
         final FlushStrategy flushStrategy = FlushStrategy.forName(flushStrategyString); // TODO relax case sensitivity
 
         final Boolean allowMultipleUsers = ModelNodeUtil.getBooleanIfSetOrGetDefault(operationContext, dataSourceNode, ALLOW_MULTIPLE_USERS);
-        Extension incrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_INCREMENTER_CLASS, CAPACITY_INCREMENTER_PROPERTIES);
-        Extension decrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_DECREMENTER_CLASS, CAPACITY_DECREMENTER_PROPERTIES);
+        Extension incrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_INCREMENTER_CLASS, CAPACITY_INCREMENTER_MODULE, CAPACITY_INCREMENTER_PROPERTIES);
+        Extension decrementer = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CAPACITY_DECREMENTER_CLASS, CAPACITY_DECREMENTER_MODULE, CAPACITY_DECREMENTER_PROPERTIES);
         final Capacity capacity = new Capacity(incrementer, decrementer);
-        final Extension connectionListener = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CONNECTION_LISTENER_CLASS, CONNECTION_LISTENER_PROPERTIES);
+        final Extension connectionListener = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, CONNECTION_LISTENER_CLASS, CONNECTION_LISTENER_MODULE, CONNECTION_LISTENER_PROPERTIES);
 
         final DsXaPool xaPool = new DsXaPoolImpl(minPoolSize, initialPoolSize, maxPoolSize, prefill, useStrictMin, flushStrategy,
                 isSameRmOverride, interleaving, padXid, wrapXaDataSource, noTxSeparatePool, allowMultipleUsers, capacity, fair, connectionListener);
@@ -282,7 +291,7 @@ class DataSourceModelNodeUtil {
         final boolean elytronEnabled = ModelNodeUtil.getBooleanIfSetOrGetDefault(operationContext, dataSourceNode, ELYTRON_ENABLED);
         final String authenticationContext = ModelNodeUtil.getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, AUTHENTICATION_CONTEXT);
 
-        final Extension reauthPlugin = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, REAUTH_PLUGIN_CLASSNAME, REAUTHPLUGIN_PROPERTIES);
+        final Extension reauthPlugin = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, REAUTH_PLUGIN_CLASSNAME, REAUTH_PLUGIN_MODULENAME, REAUTHPLUGIN_PROPERTIES);
 
         final DsSecurity security = new DsSecurityImpl(username, password,
                 elytronEnabled? authenticationContext: securityDomain, elytronEnabled, credentialSourceSupplier, reauthPlugin);
@@ -313,11 +322,12 @@ class DataSourceModelNodeUtil {
         }
         final String checkValidConnectionSql = ModelNodeUtil.getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, CHECK_VALID_CONNECTION_SQL);
 
-        final Extension exceptionSorter = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, EXCEPTION_SORTER_CLASSNAME, EXCEPTION_SORTER_PROPERTIES);
+        final Extension exceptionSorter = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, EXCEPTION_SORTER_CLASSNAME,
+                EXCEPTION_SORTER_MODULENAME, EXCEPTION_SORTER_PROPERTIES);
         final Extension staleConnectionChecker = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, STALE_CONNECTION_CHECKER_CLASSNAME,
-                STALE_CONNECTION_CHECKER_PROPERTIES);
+                STALE_CONNECTION_CHECKER_MODULENAME, STALE_CONNECTION_CHECKER_PROPERTIES);
         final Extension validConnectionChecker = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, VALID_CONNECTION_CHECKER_CLASSNAME,
-                VALID_CONNECTION_CHECKER_PROPERTIES);
+                VALID_CONNECTION_CHECKER_MODULENAME, VALID_CONNECTION_CHECKER_PROPERTIES);
 
         Long backgroundValidationMillis = ModelNodeUtil.getLongIfSetOrGetDefault(operationContext, dataSourceNode, BACKGROUNDVALIDATIONMILLIS);
         final Boolean backgroundValidation = ModelNodeUtil.getBooleanIfSetOrGetDefault(operationContext, dataSourceNode, BACKGROUNDVALIDATION);
@@ -343,7 +353,7 @@ class DataSourceModelNodeUtil {
                credential = new CredentialImpl(recoveryUsername, recoveryPassword,
                        recoveryElytronEnabled? recoveryAuthenticationContext: recoverySecurityDomain, elytronEnabled, recoveryCredentialSourceSupplier);
 
-            Extension recoverPlugin = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, RECOVER_PLUGIN_CLASSNAME, RECOVER_PLUGIN_PROPERTIES);
+            Extension recoverPlugin = ModelNodeUtil.extractExtension(operationContext, dataSourceNode, RECOVER_PLUGIN_CLASSNAME, RECOVER_PLUGIN_MODULENAME, RECOVER_PLUGIN_PROPERTIES);
 
             if (noRecovery == null)
                 noRecovery = Boolean.FALSE;

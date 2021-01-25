@@ -66,6 +66,7 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.ELYTRON_EN
 import static org.jboss.as.connector.subsystems.datasources.Constants.ENABLED;
 import static org.jboss.as.connector.subsystems.datasources.Constants.ENLISTMENT_TRACE;
 import static org.jboss.as.connector.subsystems.datasources.Constants.EXCEPTION_SORTER_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.EXCEPTION_SORTER_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.EXCEPTION_SORTER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.INTERLEAVING;
 import static org.jboss.as.connector.subsystems.datasources.Constants.JDBC_DRIVER_NAME;
@@ -97,6 +98,7 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.SET_TX_QUE
 import static org.jboss.as.connector.subsystems.datasources.Constants.SHARE_PREPARED_STATEMENTS;
 import static org.jboss.as.connector.subsystems.datasources.Constants.SPY;
 import static org.jboss.as.connector.subsystems.datasources.Constants.STALE_CONNECTION_CHECKER_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.STALE_CONNECTION_CHECKER_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.STALE_CONNECTION_CHECKER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.TRACKING;
 import static org.jboss.as.connector.subsystems.datasources.Constants.TRACK_STATEMENTS;
@@ -110,6 +112,7 @@ import static org.jboss.as.connector.subsystems.datasources.Constants.USE_JAVA_C
 import static org.jboss.as.connector.subsystems.datasources.Constants.USE_TRY_LOCK;
 import static org.jboss.as.connector.subsystems.datasources.Constants.VALIDATE_ON_MATCH;
 import static org.jboss.as.connector.subsystems.datasources.Constants.VALID_CONNECTION_CHECKER_CLASSNAME;
+import static org.jboss.as.connector.subsystems.datasources.Constants.VALID_CONNECTION_CHECKER_MODULENAME;
 import static org.jboss.as.connector.subsystems.datasources.Constants.VALID_CONNECTION_CHECKER_PROPERTIES;
 import static org.jboss.as.connector.subsystems.datasources.Constants.WRAP_XA_RESOURCE;
 import static org.jboss.as.connector.subsystems.datasources.Constants.XADATASOURCE_PROPERTIES;
@@ -2021,7 +2024,15 @@ public class DsParser extends AbstractParser {
                             break;
                         }
                         case VALIDATION: {
-                            parseValidationSetting(reader, operation);
+                            switch (Namespace.forUri(reader.getNamespaceURI())) {
+                                // This method is only called for version 7 and later.
+                                case DATASOURCES_7_0:
+                                    parseValidationSetting_7_0(reader, operation);
+                                    break;
+                                default:
+                                    parseValidationSetting(reader, operation);
+                                    break;
+                            }
                             break;
                         }
                         default:
@@ -2412,6 +2423,74 @@ public class DsParser extends AbstractParser {
                             break;
                         default:
                             throw new ParserException(bundle.unexpectedElement(reader.getLocalName()));
+                    }
+                    break;
+                }
+            }
+        }
+        throw new ParserException(bundle.unexpectedEndOfDocument());
+    }
+
+    private void parseValidationSetting_7_0(XMLExtendedStreamReader reader, final ModelNode operation) throws XMLStreamException, ParserException,
+            ValidateException {
+
+        while (reader.hasNext()) {
+            switch (reader.nextTag()) {
+                case END_ELEMENT: {
+                    if (DataSource.Tag.forName(reader.getLocalName()) == DataSource.Tag.VALIDATION) {
+
+                        return;
+
+                    } else {
+                        if (Validation.Tag.forName(reader.getLocalName()) == Validation.Tag.UNKNOWN) {
+                            throw new ParserException(bundle.unexpectedEndTag(reader.getLocalName()));
+                        }
+                    }
+                    break;
+                }
+                case START_ELEMENT: {
+                    Validation.Tag currTag = Validation.Tag.forName(reader.getLocalName());
+                    switch (currTag) {
+                        case BACKGROUND_VALIDATION: {
+                            String value = rawElementText(reader);
+                            BACKGROUNDVALIDATION.parseAndSetParameter(value, operation, reader);
+                            break;
+                        }
+                        case BACKGROUND_VALIDATION_MILLIS: {
+                            String value = rawElementText(reader);
+                            BACKGROUNDVALIDATIONMILLIS.parseAndSetParameter(value, operation, reader);
+                            break;
+                        }
+                        case CHECK_VALID_CONNECTION_SQL: {
+                            String value = rawElementText(reader);
+                            CHECK_VALID_CONNECTION_SQL.parseAndSetParameter(value, operation, reader);
+                            break;
+                        }
+                        case EXCEPTION_SORTER: {
+                            parseModuleExtension(reader, currTag.getLocalName(), operation, EXCEPTION_SORTER_CLASSNAME, EXCEPTION_SORTER_MODULENAME, EXCEPTION_SORTER_PROPERTIES);
+                            break;
+                        }
+                        case STALE_CONNECTION_CHECKER: {
+                            parseModuleExtension(reader, currTag.getLocalName(), operation, STALE_CONNECTION_CHECKER_CLASSNAME, STALE_CONNECTION_CHECKER_MODULENAME, STALE_CONNECTION_CHECKER_PROPERTIES);
+                            break;
+                        }
+                        case USE_FAST_FAIL: {
+                            String value = rawElementText(reader);
+                            USE_FAST_FAIL.parseAndSetParameter(value, operation, reader);
+                            break;
+                        }
+                        case VALIDATE_ON_MATCH: {
+                            String value = rawElementText(reader);
+                            VALIDATE_ON_MATCH.parseAndSetParameter(value, operation, reader);
+                            break;
+                        }
+                        case VALID_CONNECTION_CHECKER: {
+                            parseModuleExtension(reader, currTag.getLocalName(), operation, VALID_CONNECTION_CHECKER_CLASSNAME, VALID_CONNECTION_CHECKER_MODULENAME, VALID_CONNECTION_CHECKER_PROPERTIES);
+                            break;
+                        }
+                        default: {
+                            throw new ParserException(bundle.unexpectedElement(reader.getLocalName()));
+                        }
                     }
                     break;
                 }

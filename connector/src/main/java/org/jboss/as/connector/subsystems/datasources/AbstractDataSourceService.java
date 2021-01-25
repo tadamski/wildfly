@@ -83,6 +83,10 @@ import org.jboss.jca.deployers.common.AbstractDsDeployer;
 import org.jboss.jca.deployers.common.CommonDeployment;
 import org.jboss.jca.deployers.common.DeployException;
 import org.jboss.logging.Logger;
+import org.jboss.modules.Module;
+import org.jboss.modules.ModuleIdentifier;
+import org.jboss.modules.ModuleLoadException;
+import org.jboss.modules.ModuleLoader;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceBuilder;
@@ -613,7 +617,7 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
         }
 
         private void setMcfProperties(final BaseWrapperManagedConnectionFactory managedConnectionFactory,
-                CommonDataSource dataSourceConfig, final Statement statement) {
+                CommonDataSource dataSourceConfig, final Statement statement) throws DeployException {
 
             if (dataSourceConfig.getTransactionIsolation() != null) {
                 managedConnectionFactory.setTransactionIsolation(dataSourceConfig.getTransactionIsolation().name());
@@ -665,6 +669,9 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
                     if (validConnectionChecker.getClassName() != null) {
                         managedConnectionFactory.setValidConnectionCheckerClassName(validConnectionChecker.getClassName());
                     }
+                    if (validConnectionChecker.getModuleName()!= null) {
+                        managedConnectionFactory.setValidConnectionCheckerClassLoader(getModuleClassLoader(validConnectionChecker.getModuleName()));
+                    }
                     if (validConnectionChecker.getConfigPropertiesMap() != null) {
                         managedConnectionFactory
                                 .setValidConnectionCheckerProperties(buildConfigPropsString(validConnectionChecker
@@ -676,6 +683,9 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
                     if (exceptionSorter.getClassName() != null) {
                         managedConnectionFactory.setExceptionSorterClassName(exceptionSorter.getClassName());
                     }
+                    if(exceptionSorter.getModuleName() != null){
+                        managedConnectionFactory.setExceptionSorterClassLoader(getModuleClassLoader(exceptionSorter.getModuleName()));
+                    }
                     if (exceptionSorter.getConfigPropertiesMap() != null) {
                         managedConnectionFactory.setExceptionSorterProperties(buildConfigPropsString(exceptionSorter
                                 .getConfigPropertiesMap()));
@@ -686,12 +696,25 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
                     if (staleConnectionChecker.getClassName() != null) {
                         managedConnectionFactory.setStaleConnectionCheckerClassName(staleConnectionChecker.getClassName());
                     }
+                    if (staleConnectionChecker.getModuleName() != null) {
+                        managedConnectionFactory.setStaleConnectionCheckerClassLoader(getModuleClassLoader(staleConnectionChecker.getModuleName()));
+                    }
                     if (staleConnectionChecker.getConfigPropertiesMap() != null) {
                         managedConnectionFactory
                                 .setStaleConnectionCheckerProperties(buildConfigPropsString(staleConnectionChecker
                                         .getConfigPropertiesMap()));
                     }
                 }
+            }
+        }
+
+        private ClassLoader getModuleClassLoader(final String moduleName) throws DeployException{
+            ModuleLoader moduleLoader = Module.getBootModuleLoader();
+            try {
+                Module filterModule = moduleLoader.loadModule(ModuleIdentifier.fromString(moduleName));
+                return filterModule.getClassLoader();
+            } catch (ModuleLoadException e) {
+                throw new DeployException("PITU PITU");
             }
         }
 

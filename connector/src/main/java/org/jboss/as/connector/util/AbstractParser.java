@@ -140,4 +140,61 @@ public abstract class AbstractParser {
         throw new ParserException(bundle.unexpectedEndOfDocument());
     }
 
+    protected void parseModuleExtension(XMLExtendedStreamReader reader, String enclosingTag, final ModelNode operation,
+                                  final SimpleAttributeDefinition extensionClassName, final SimpleAttributeDefinition extensionModuleName, final PropertiesAttributeDefinition extensionProperties)
+            throws XMLStreamException, ParserException, ValidateException {
+
+        final int count = reader.getAttributeCount();
+        for (int i = 0; i < count; i++) {
+
+            final Extension.Attribute attribute = Extension.Attribute.forName(reader.getAttributeLocalName(i));
+            final String value = reader.getAttributeValue(i);
+
+            switch (attribute) {
+                case CLASS_NAME: {
+                    extensionClassName.parseAndSetParameter(value, operation, reader);
+                    break;
+                }
+                case MODULE_NAME: {
+                    extensionModuleName.parseAndSetParameter(value, operation, reader);
+                    break;
+                }
+                default:
+                    throw ParseUtils.unexpectedAttribute(reader, i);
+            }
+        }
+
+        while (reader.hasNext()) {
+            switch (reader.nextTag()) {
+                case END_ELEMENT: {
+                    if (reader.getLocalName().equals(enclosingTag)) {
+                        //It's fine doing nothing
+                        return;
+                    } else {
+                        if (Extension.Tag.forName(reader.getLocalName()) == Extension.Tag.UNKNOWN) {
+                            throw ParseUtils.unexpectedEndElement(reader);
+                        }
+                    }
+                    break;
+                }
+                case START_ELEMENT: {
+                    switch (Extension.Tag.forName(reader.getLocalName())) {
+                        case CONFIG_PROPERTY: {
+                            requireSingleAttribute(reader, "name");
+                            final String name = reader.getAttributeValue(0);
+                            String value = rawElementText(reader);
+                            final String trimmed = value == null ? null : value.trim();
+                            extensionProperties.parseAndAddParameterElement(name, trimmed, operation, reader);
+                            break;
+                        }
+                        default:
+                            throw new ParserException(bundle.unexpectedElement(reader.getLocalName()));
+                    }
+                    break;
+                }
+            }
+        }
+        throw new ParserException(bundle.unexpectedEndOfDocument());
+    }
+
 }
