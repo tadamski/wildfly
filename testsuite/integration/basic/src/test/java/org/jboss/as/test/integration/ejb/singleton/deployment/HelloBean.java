@@ -25,6 +25,7 @@ import javax.ejb.Stateless;
 public class HelloBean implements HelloRemote {
 
     public String hello() {
+        System.out.println("BAJOBONGO IDZIE HELLO");
         return "hello";
     }
 }

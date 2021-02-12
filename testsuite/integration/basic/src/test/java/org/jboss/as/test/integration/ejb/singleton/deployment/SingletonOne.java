@@ -28,6 +28,10 @@ import javax.ejb.Startup;
 public class SingletonOne {
     @PostConstruct
     public void startUp() {
-        throw new RuntimeException("Singleton one fails");
+        System.out.println("BAJOBONGO STARTUJE SINGLETON");
+        try {
+            Thread.sleep(3000);
+        } catch(InterruptedException e){}
+        System.out.println("BAJOBONGO SINGLETON WSTAL");
     }
 }

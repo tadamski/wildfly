@@ -24,6 +24,7 @@ public class MyServlet implements Servlet {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+        System.out.println("BAJOBONGO IDZIE POSTCONSTRUCT");
         InitializeInOrderTestCase.recordInit(MyServlet.class.getSimpleName());
     }
 

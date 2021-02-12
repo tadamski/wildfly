@@ -20,12 +20,15 @@ public class StartupCountDownInterceptor implements Interceptor {
 
   @Override
   public Object processInvocation(final InterceptorContext context) throws Exception {
+    System.out.println("BAJOBONGO IDZIE STARTUP COUNTDOWN INTERCEPTOR");
+    new Exception().printStackTrace();
     final StartupCountdown.Frame frame = countdown.enter();
     try {
       Object proceed = context.proceed();
       countdown.countDown();
       return proceed;
     } finally {
+      System.out.println("BAJOBONGO KONIEC CZEKANIA");
       StartupCountdown.restore(frame);
     }
   }
