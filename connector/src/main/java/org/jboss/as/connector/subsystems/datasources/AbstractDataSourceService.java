@@ -83,6 +83,9 @@ import org.jboss.jca.deployers.common.AbstractDsDeployer;
 import org.jboss.jca.deployers.common.CommonDeployment;
 import org.jboss.jca.deployers.common.DeployException;
 import org.jboss.logging.Logger;
+import org.jboss.modules.Module;
+import org.jboss.modules.ModuleIdentifier;
+import org.jboss.modules.ModuleLoadException;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceBuilder;
@@ -617,7 +620,7 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
         }
 
         private void setMcfProperties(final BaseWrapperManagedConnectionFactory managedConnectionFactory,
-                CommonDataSource dataSourceConfig, final Statement statement) {
+                CommonDataSource dataSourceConfig, final Statement statement) throws DeployException {
 
             if (dataSourceConfig.getTransactionIsolation() != null) {
                 managedConnectionFactory.setTransactionIsolation(dataSourceConfig.getTransactionIsolation().name());
@@ -669,6 +672,15 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
                     if (validConnectionChecker.getClassName() != null) {
                         managedConnectionFactory.setValidConnectionCheckerClassName(validConnectionChecker.getClassName());
                     }
+                    if (validConnectionChecker.getModule() != null) {
+                        try {
+                            final ModuleIdentifier validConnectionCheckerModuleId = ModuleIdentifier.create(validConnectionChecker.getModule());
+                            final Module validConnectionCheckerModule = Module.getCallerModuleLoader().loadModule(validConnectionCheckerModuleId);
+                            managedConnectionFactory.setValidConnectionCheckerClassLoader(validConnectionCheckerModule.getClassLoader());
+                        } catch (ModuleLoadException exception) {
+                            throw new DeployException("Wrong module name", exception);
+                        }
+                    }
                     if (validConnectionChecker.getConfigPropertiesMap() != null) {
                         managedConnectionFactory
                                 .setValidConnectionCheckerProperties(buildConfigPropsString(validConnectionChecker
@@ -680,6 +692,15 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
                     if (exceptionSorter.getClassName() != null) {
                         managedConnectionFactory.setExceptionSorterClassName(exceptionSorter.getClassName());
                     }
+                    if (exceptionSorter.getModule() != null) {
+                        try {
+                            final ModuleIdentifier exceptionSorterModuleId = ModuleIdentifier.create(exceptionSorter.getModule());
+                            final Module exceptionSorterModule = Module.getCallerModuleLoader().loadModule(exceptionSorterModuleId);
+                            managedConnectionFactory.setExceptionSorterClassLoader(exceptionSorterModule.getClassLoader());
+                        } catch (ModuleLoadException exception) {
+                            throw new DeployException("Wrong module name", exception);
+                        }
+                    }
                     if (exceptionSorter.getConfigPropertiesMap() != null) {
                         managedConnectionFactory.setExceptionSorterProperties(buildConfigPropsString(exceptionSorter
                                 .getConfigPropertiesMap()));
@@ -689,6 +710,15 @@ public abstract class AbstractDataSourceService implements Service<DataSource> {
                 if (staleConnectionChecker != null) {
                     if (staleConnectionChecker.getClassName() != null) {
                         managedConnectionFactory.setStaleConnectionCheckerClassName(staleConnectionChecker.getClassName());
+                    }
+                    if (staleConnectionChecker.getModule() != null) {
+                        try {
+                            final ModuleIdentifier staleConnectionCheckerModuleId = ModuleIdentifier.create(exceptionSorter.getModule());
+                            final Module staleConnectionCheckerModule = Module.getCallerModuleLoader().loadModule(staleConnectionCheckerModuleId);
+                            managedConnectionFactory.setExceptionSorterClassLoader(staleConnectionCheckerModule.getClassLoader());
+                        } catch (ModuleLoadException exception) {
+                            throw new DeployException("Wrong module name", exception);
+                        }
                     }
                     if (staleConnectionChecker.getConfigPropertiesMap() != null) {
                         managedConnectionFactory

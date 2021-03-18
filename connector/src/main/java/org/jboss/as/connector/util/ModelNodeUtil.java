@@ -41,16 +41,26 @@ public class ModelNodeUtil {
 
     }
 
-    public static Extension extractExtension(final OperationContext operationContext, final ModelNode dataSourceNode,
-                                             final SimpleAttributeDefinition className, final PropertiesAttributeDefinition propertyName)
+    public static Extension extractExtension(final OperationContext operationContext, final ModelNode dataSourceNode, final SimpleAttributeDefinition classNameAttribute,
+                                             final PropertiesAttributeDefinition propertyNameAttribute) throws ValidateException, OperationFailedException {
+        return extractExtension(operationContext, dataSourceNode, classNameAttribute, null, propertyNameAttribute);
+    }
+
+    public static Extension extractExtension(final OperationContext operationContext, final ModelNode dataSourceNode, final SimpleAttributeDefinition classNameAttribute,
+                                             final SimpleAttributeDefinition moduleNameAttribute, final PropertiesAttributeDefinition propertyNameAttribute)
             throws ValidateException, OperationFailedException {
-        if (dataSourceNode.hasDefined(className.getName())) {
-            String exceptionSorterClassName = getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, className);
+        if (dataSourceNode.hasDefined(classNameAttribute.getName())) {
+            String className = getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, classNameAttribute);
 
-            Map<String, String> unwrapped = propertyName.unwrap(operationContext, dataSourceNode);
-            Map<String, String> exceptionSorterProperty = unwrapped.size() > 0 ? unwrapped : null;
+            String moduleName = null;
+            if (moduleNameAttribute != null) {
+                moduleName = getResolvedStringIfSetOrGetDefault(operationContext, dataSourceNode, moduleNameAttribute);
+            }
 
-            return new Extension(exceptionSorterClassName, exceptionSorterProperty);
+            Map<String, String> unwrapped = propertyNameAttribute.unwrap(operationContext, dataSourceNode);
+            Map<String, String> property = unwrapped.size() > 0 ? unwrapped : null;
+
+            return new Extension(className, moduleName, property);
         } else {
             return null;
         }
