@@ -75,7 +75,7 @@ public class DatasourcesSubsystemTestCase extends AbstractSubsystemBaseTest {
 
     @Override
     protected String getSubsystemXsdPath() throws Exception {
-        return "schema/wildfly-datasources_6_0.xsd";
+        return "schema/wildfly-datasources_6_1.xsd";
     }
 
     @Override
@@ -98,7 +98,7 @@ public class DatasourcesSubsystemTestCase extends AbstractSubsystemBaseTest {
 
     @Test
     public void testElytronConfig() throws Exception {
-        standardSubsystemTest("datasources-elytron-enabled_6_0.xml");
+        standardSubsystemTest("datasources-elytron-enabled.xml");
     }
 
     @Test
@@ -130,7 +130,7 @@ public class DatasourcesSubsystemTestCase extends AbstractSubsystemBaseTest {
 
     @Test
     public void testTransformerElytronEnabledEAP64() throws Exception {
-        testTransformerElytronEnabled("datasources-elytron-enabled_6_0.xml", ModelTestControllerVersion.EAP_6_4_0, ModelVersion.create(1, 3, 0));
+        testTransformerElytronEnabled("datasources-elytron-enabled.xml", ModelTestControllerVersion.EAP_6_4_0, ModelVersion.create(1, 3, 0));
     }
     @Test
     public void testTransformerEAP7() throws Exception {
