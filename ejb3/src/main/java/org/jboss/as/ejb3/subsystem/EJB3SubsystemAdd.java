@@ -137,6 +137,7 @@ import org.jboss.as.ejb3.remote.LocalTransportProvider;
 import org.jboss.as.ejb3.remote.http.EJB3RemoteHTTPService;
 import org.jboss.as.ejb3.security.ApplicationSecurityDomainConfig;
 import org.jboss.as.ejb3.suspend.EJBSuspendHandlerService;
+import org.jboss.as.naming.TransactionNamespaceAccessControlService;
 import org.jboss.as.network.ProtocolSocketBinding;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
@@ -513,6 +514,9 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
         context.getServiceTarget().addService(EJB3UserTransactionAccessControlService.SERVICE_NAME, userTxAccessControlService)
                 .addDependency(UserTransactionAccessControlService.SERVICE_NAME, UserTransactionAccessControlService.class, userTxAccessControlService.getUserTransactionAccessControlServiceInjector())
                 .install();
+
+        final TransactionNamespaceAccessControlService transactionNamespaceAccessControlService = new TransactionNamespaceAccessControlService();
+        context.getServiceTarget().addService(TransactionNamespaceAccessControlService.SERVICE_NAME).setInstance(transactionNamespaceAccessControlService).install();
 
         // add ejb suspend handler service
         boolean enableGracefulShutdown = EJB3SubsystemRootResourceDefinition.ENABLE_GRACEFUL_TXN_SHUTDOWN.resolveModelAttribute(context, model).asBoolean();
