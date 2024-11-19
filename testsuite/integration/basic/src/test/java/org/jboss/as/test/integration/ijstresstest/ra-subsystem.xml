@@ -1,0 +1,21 @@
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<subsystem xmlns="urn:jboss:domain:resource-adapters:7.1">
+    <resource-adapters>
+        <resource-adapter>
+            <archive>stresstest.rar</archive>
+            <transaction-support>NoTransaction</transaction-support>
+            <connection-definitions>
+                <connection-definition class-name="org.jboss.as.test.integration.ijstresstest.StressTestManagedConnectionFactory" jndi-name="java:jboss/stress-test-adapter">
+                    <pool>
+                        <max-pool-size>5</max-pool-size>
+                        <prefill>false</prefill>
+                    </pool>
+                </connection-definition>
+            </connection-definitions>
+        </resource-adapter>
+    </resource-adapters>
+</subsystem>
