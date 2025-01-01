@@ -9,6 +9,7 @@ import jakarta.resource.ResourceException;
 import jakarta.resource.spi.ConnectionDefinition;
 import jakarta.resource.spi.ConnectionManager;
 import jakarta.resource.spi.ConnectionRequestInfo;
+import jakarta.resource.spi.LazyAssociatableConnectionManager;
 import jakarta.resource.spi.ManagedConnection;
 import jakarta.resource.spi.ManagedConnectionFactory;
 import jakarta.resource.spi.ResourceAdapter;
@@ -41,6 +42,8 @@ public class StressTestManagedConnectionFactory implements ManagedConnectionFact
     private ResourceAdapter ra;
 
     private PrintWriter writer;
+
+    private LazyAssociatableConnectionManager cm;
 
     /**
      * Default constructor
@@ -82,6 +85,8 @@ public class StressTestManagedConnectionFactory implements ManagedConnectionFact
 
     public Object createConnectionFactory(ConnectionManager cxManager) throws ResourceException {
 
+        this.cm = (LazyAssociatableConnectionManager) cm;
+
         return new StressTestConnectionFactoryImpl(this, cxManager);
 
     }
@@ -100,7 +105,7 @@ public class StressTestManagedConnectionFactory implements ManagedConnectionFact
 
     public ManagedConnection createManagedConnection(Subject subject, ConnectionRequestInfo cxRequestInfo) throws ResourceException {
 
-        return new StressTestManagedConnection(this);
+        return new StressTestManagedConnection(this, cm);
 
     }
 
@@ -117,7 +122,7 @@ public class StressTestManagedConnectionFactory implements ManagedConnectionFact
 
     public ManagedConnection matchManagedConnections(Set connectionSet, Subject subject, ConnectionRequestInfo cxRequestInfo) throws ResourceException {
 
-        return null;
+            return (ManagedConnection) connectionSet.iterator().next();
 
     }
 

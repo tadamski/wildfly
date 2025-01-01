@@ -10,6 +10,8 @@ import jakarta.resource.ResourceException;
 import jakarta.resource.spi.ConnectionEvent;
 import jakarta.resource.spi.ConnectionEventListener;
 import jakarta.resource.spi.ConnectionRequestInfo;
+import jakarta.resource.spi.DissociatableManagedConnection;
+import jakarta.resource.spi.LazyAssociatableConnectionManager;
 import jakarta.resource.spi.LocalTransaction;
 import jakarta.resource.spi.ManagedConnection;
 import jakarta.resource.spi.ManagedConnectionMetaData;
@@ -17,15 +19,15 @@ import jakarta.resource.spi.ManagedConnectionMetaData;
 import javax.security.auth.Subject;
 import javax.transaction.xa.XAResource;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.wildfly.common.Assert.checkNotNullParam;
 
 /**
  * User: jpai
  */
-public class StressTestManagedConnection implements ManagedConnection {
+public class StressTestManagedConnection implements ManagedConnection, DissociatableManagedConnection {
 
 
     /**
@@ -33,6 +35,7 @@ public class StressTestManagedConnection implements ManagedConnection {
      */
     private StressTestManagedConnectionFactory mcf;
 
+    private LazyAssociatableConnectionManager cm;
 
     /**
      * Listeners
@@ -43,7 +46,7 @@ public class StressTestManagedConnection implements ManagedConnection {
     /**
      * Connection
      */
-    private Object connection;
+    private StressTestConnection connection;
 
     private PrintWriter writer;
 
@@ -53,11 +56,11 @@ public class StressTestManagedConnection implements ManagedConnection {
      *
      * @param mcf mcf
      */
-    public StressTestManagedConnection(StressTestManagedConnectionFactory mcf) {
+    public StressTestManagedConnection(StressTestManagedConnectionFactory mcf, LazyAssociatableConnectionManager cm) {
         this.mcf = mcf;
-        this.listeners = new ArrayList<ConnectionEventListener>();
+        this.listeners = new CopyOnWriteArrayList<>();
+        this.cm = cm;
         this.connection = null;
-
     }
 
 
@@ -74,7 +77,7 @@ public class StressTestManagedConnection implements ManagedConnection {
 
     public Object getConnection(Subject subject, ConnectionRequestInfo cxRequestInfo) throws ResourceException {
 
-        connection = new StressTestConnectionImpl(this, mcf);
+        connection = new StressTestConnectionImpl(this, mcf, cxRequestInfo, cm);
         return connection;
     }
 
@@ -90,7 +93,7 @@ public class StressTestManagedConnection implements ManagedConnection {
 
     public void associateConnection(Object connection) throws ResourceException {
 
-        this.connection = connection;
+        this.connection = (StressTestConnection) connection;
 
     }
 
@@ -217,4 +220,15 @@ public class StressTestManagedConnection implements ManagedConnection {
         }
     }
 
+    @Override
+    public void dissociateConnections() throws ResourceException {
+        connection.detach();
+    }
+
+    void notifyError(){
+        ConnectionEvent event = new ConnectionEvent(this, ConnectionEvent.CONNECTION_ERROR_OCCURRED);
+        for(ConnectionEventListener cel: listeners){
+            cel.connectionErrorOccurred(event);
+        }
+    }
 }

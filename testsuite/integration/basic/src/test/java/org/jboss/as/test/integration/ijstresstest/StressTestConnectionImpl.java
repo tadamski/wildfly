@@ -5,6 +5,13 @@
 
 package org.jboss.as.test.integration.ijstresstest;
 
+import jakarta.resource.ResourceException;
+import jakarta.resource.spi.ConnectionRequestInfo;
+import jakarta.resource.spi.LazyAssociatableConnectionManager;
+
+import java.util.Random;
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * User: jpai
  */
@@ -24,6 +31,12 @@ public class StressTestConnectionImpl implements StressTestConnection {
 
     private StressTestManagedConnectionFactory mcf;
 
+    private ConnectionRequestInfo cri;
+
+    private LazyAssociatableConnectionManager cm;
+
+    private ReentrantLock lock = new ReentrantLock(true);
+
 
     /**
      * Default constructor
@@ -31,12 +44,12 @@ public class StressTestConnectionImpl implements StressTestConnection {
      * @param mc  HelloWorldManagedConnection
      * @param mcf HelloWorldManagedConnectionFactory
      */
-    public StressTestConnectionImpl(StressTestManagedConnection mc, StressTestManagedConnectionFactory mcf) {
+    public StressTestConnectionImpl(StressTestManagedConnection mc, StressTestManagedConnectionFactory mcf, ConnectionRequestInfo cri, LazyAssociatableConnectionManager cm) {
 
         this.mc = mc;
-
         this.mcf = mcf;
-
+        this.cri = cri;
+        this.cm = cm;
     }
 
 
@@ -48,7 +61,6 @@ public class StressTestConnectionImpl implements StressTestConnection {
     public String helloWorld() {
 
         return helloWorld(mcf.getResourceAdapter().toString());
-
     }
 
 
@@ -58,10 +70,33 @@ public class StressTestConnectionImpl implements StressTestConnection {
      * @param name String name
      * @return String helloworld
      */
-    public String helloWorld(String name) {
-
+    private String helloWorld(String name) {
+        lock.lock();
+        try {
+        System.out.println("BAJOBONGO TU SIE ROZPOCZYNA HELLO WORLD");
+        System.out.println("BAJOBONGO CONNECTION ACTIVE JEST JUZ TRUE");
+        if (mc == null) {
+            try {
+                System.out.println("BAJOBONGO W OGOLE IDZIE JAKIES ASSOCIATE");
+                cm.associateConnection(this, mcf, cri);
+            } catch (ResourceException re) {
+                System.out.println("POLECIALO RESOURCE EXCEPTION");
+            }
+        }
+        introduceRandomError();
+        System.out.println("BAJOBONGO CONNECTION ACTIVE JEST JUZ FALSE");
         return "Hello World, " + name + " !";
+        }
+        finally {
+            lock.unlock();
+        }
 
+    }
+
+    private void introduceRandomError() {
+        if (new Random().nextDouble() < 0.1) {
+                mc.notifyError();
+        }
     }
 
 
@@ -69,10 +104,33 @@ public class StressTestConnectionImpl implements StressTestConnection {
      * Close
      */
     public void close() {
-
+        lock.lock();
+        try {
+        System.out.println("BAJOBONGO PROBOJE ZAMKNAC");
+        if (mc == null) {
+            try {
+                System.out.println("BAJOBONGO CHCE ZWRACAC HANDLE ALE MAM NULA");
+                cm.associateConnection(this, mcf, cri);
+            } catch (Throwable re) {
+                System.out.println("BAJOBONGO POLECIALO RESOURCE EXCEPTION");
+            }
+        }
+        System.out.println("BAJOBONGO BEDZIE TO ZAMYKALNIE CZY NIE");
         mc.closeHandle(this);
+        }
+        finally {
+            lock.unlock();
+        }
 
     }
 
+    @Override
+    public void detach() {
+        try {
+        mc = null;
+        } finally {
+            lock.unlock();
+        }
+    }
 }
 

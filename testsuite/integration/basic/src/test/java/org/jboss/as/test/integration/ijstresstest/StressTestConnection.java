@@ -17,20 +17,11 @@ public interface StressTestConnection {
 
     String helloWorld();
 
-
-    /**
-     * HelloWorld
-     *
-     * @param name A name
-     * @return String
-     */
-
-    String helloWorld(String name);
-
-
     /**
      * Close
      */
 
     void close();
+
+    void detach();
 }

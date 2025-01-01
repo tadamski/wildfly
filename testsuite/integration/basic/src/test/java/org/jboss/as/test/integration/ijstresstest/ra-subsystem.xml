@@ -5,7 +5,7 @@
 
 <subsystem xmlns="urn:jboss:domain:resource-adapters:7.1">
     <resource-adapters>
-        <resource-adapter>
+        <resource-adapter statistics-enabled="true">
             <archive>stresstest.rar</archive>
             <transaction-support>NoTransaction</transaction-support>
             <connection-definitions>
@@ -14,6 +14,9 @@
                         <max-pool-size>5</max-pool-size>
                         <prefill>false</prefill>
                     </pool>
+                    <timeout>
+                        <blocking-timeout-millis>10000</blocking-timeout-millis>
+                    </timeout>
                 </connection-definition>
             </connection-definitions>
         </resource-adapter>

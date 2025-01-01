@@ -12,6 +12,7 @@ import org.jboss.as.arquillian.api.ServerSetup;
 import org.jboss.as.arquillian.container.ManagementClient;
 import org.jboss.as.connector.subsystems.resourceadapters.Namespace;
 import org.jboss.as.connector.subsystems.resourceadapters.ResourceAdapterSubsystemParser;
+import org.jboss.as.controller.client.helpers.Operations;
 import org.jboss.as.test.integration.ijstresstest.ejb.StressEJB;
 import org.jboss.as.test.integration.ijstresstest.ejb.StressEJBBean;
 import org.jboss.as.test.integration.management.base.AbstractMgmtServerSetupTask;
@@ -39,7 +40,19 @@ public class IronJacamarStressTestCase {
         public void doSetup(final ManagementClient managementClient) throws Exception {
             String xml = FileUtils.readFile(IronJacamarStressTestCase.class, "ra-subsystem.xml");
             List<ModelNode> operations = xmlToModelOperations(xml, Namespace.RESOURCEADAPTERS_7_1.getUriString(), new ResourceAdapterSubsystemParser());
-            ModelNode result = executeOperation(operationListToCompositeOperation(operations));
+
+            // Enable trace logging for org.jboss.jca and org.jboss.as.connector
+            final ModelNode ironjacamarLogAddress = Operations.createAddress("subsystem", "logging", "logger", "org.jboss.jca");
+            final ModelNode opIronJacamarLog = Operations.createAddOperation(ironjacamarLogAddress);
+            opIronJacamarLog.get("level").set("TRACE");
+            operations.add(opIronJacamarLog);
+
+            final ModelNode connectorLogAddress = Operations.createAddress("subsystem", "logging", "logger", "org.jboss.as.connector");
+            final ModelNode opConnectorLog = Operations.createAddOperation(connectorLogAddress);
+            opConnectorLog.get("level").set("TRACE");
+            operations.add(opConnectorLog);
+
+            executeOperation(operationListToCompositeOperation(operations));
         }
 
         @Override
@@ -50,6 +63,9 @@ public class IronJacamarStressTestCase {
             address.add("resource-adapter", "stress.rar");
             address.protect();
             remove(address);
+
+            remove(Operations.createAddress("subsystem", "logging", "logger", "org.jboss.jca"));
+            remove(Operations.createAddress("subsystem", "logging", "logger", "org.jboss.as.connector"));
         }
     }
 
