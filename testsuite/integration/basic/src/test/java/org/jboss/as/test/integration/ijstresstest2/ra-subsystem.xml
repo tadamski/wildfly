@@ -11,8 +11,9 @@
             <connection-definitions>
                 <connection-definition class-name="org.jboss.as.test.integration.ijstresstest2.StressTestManagedConnectionFactory" jndi-name="java:jboss/stress-test-adapter">
                     <pool>
-                        <max-pool-size>1</max-pool-size>
+                        <max-pool-size>10</max-pool-size>
                         <prefill>false</prefill>
+                        <use-strict-min>false</use-strict-min>
                     </pool>
                     <timeout>
                         <blocking-timeout-millis>10000</blocking-timeout-millis>

@@ -17,7 +17,7 @@ import java.util.concurrent.CountDownLatch;
 @Remote(StressEJB.class)
 public class StressEJBBean implements StressEJB {
 
-    private static final int NUMBER_OF_THREADS = 1;
+    private static final int NUMBER_OF_THREADS = 15;
 
     @Resource(lookup = "java:jboss/stress-test-adapter")
     StressTestConnectionFactory connectionFactory;
@@ -53,7 +53,7 @@ public class StressEJBBean implements StressEJB {
 
         @Override
         public void run() {
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < 10000; i++) {
                 try {
                     useConnection();
                 } catch (Throwable t) {
@@ -77,10 +77,10 @@ public class StressEJBBean implements StressEJB {
             StressTestConnection connection = connectionFactory.getConnection();
             connection.helloWorld();
             System.out.println("BAJOBONGO WATEK SE IDZIE SPAC PRZED ZWROCENIEM");
-            Thread.sleep(150);
+            //Thread.sleep(150);
             System.out.println("BAJOBONGO WATEK WSTAJE I BEDZIE ZWRACAL");
             connection.close();
-            Thread.sleep(200);
+            Thread.sleep(1000);
         }
     }
 

@@ -41,6 +41,8 @@ public class IdleRemoverIronJacamarStressTestCase {
             String xml = FileUtils.readFile(IdleRemoverIronJacamarStressTestCase.class, "ra-subsystem.xml");
             List<ModelNode> operations = xmlToModelOperations(xml, Namespace.RESOURCEADAPTERS_7_1.getUriString(), new ResourceAdapterSubsystemParser());
 
+            System.out.println("KUKURYKU "+operations);
+
             // Enable trace logging for org.jboss.jca and org.jboss.as.connector
             final ModelNode ironjacamarLogAddress = Operations.createAddress("subsystem", "logging", "logger", "org.jboss.jca");
             final ModelNode opIronJacamarLog = Operations.createAddOperation(ironjacamarLogAddress);
