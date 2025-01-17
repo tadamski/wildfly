@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.jboss.as.test.integration.ijstresstest;
+package org.jboss.as.test.integration.ijstresstest3;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.RunAsClient;
@@ -13,8 +13,8 @@ import org.jboss.as.arquillian.container.ManagementClient;
 import org.jboss.as.connector.subsystems.resourceadapters.Namespace;
 import org.jboss.as.connector.subsystems.resourceadapters.ResourceAdapterSubsystemParser;
 import org.jboss.as.controller.client.helpers.Operations;
-import org.jboss.as.test.integration.ijstresstest.ejb.StressEJB;
-import org.jboss.as.test.integration.ijstresstest.ejb.StressEJBBean;
+import org.jboss.as.test.integration.ijstresstest3.ejb.StressEJB;
+import org.jboss.as.test.integration.ijstresstest3.ejb.StressEJBBean;
 import org.jboss.as.test.integration.management.base.AbstractMgmtServerSetupTask;
 import org.jboss.as.test.shared.FileUtils;
 import org.jboss.dmr.ModelNode;
