@@ -17,7 +17,7 @@ import java.util.concurrent.CountDownLatch;
 @Remote(StressEJB.class)
 public class StressEJBBean implements StressEJB {
 
-    private static final int NUMBER_OF_THREADS = 1;
+    private static final int NUMBER_OF_THREADS = 15;
 
     @Resource(lookup = "java:jboss/stress-test-adapter")
     StressTestConnectionFactory connectionFactory;

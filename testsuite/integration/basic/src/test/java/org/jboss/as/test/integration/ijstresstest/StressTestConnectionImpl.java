@@ -10,7 +10,7 @@ import jakarta.resource.spi.ConnectionRequestInfo;
 import jakarta.resource.spi.LazyAssociatableConnectionManager;
 
 import java.util.Random;
-import java.util.concurrent.locks.ReentrantLock;
+//import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * User: jpai
@@ -35,7 +35,7 @@ public class StressTestConnectionImpl implements StressTestConnection {
 
     private LazyAssociatableConnectionManager cm;
 
-    private ReentrantLock lock = new ReentrantLock(true);
+    //private ReentrantLock lock = new ReentrantLock(true);
 
 
     /**
@@ -71,10 +71,9 @@ public class StressTestConnectionImpl implements StressTestConnection {
      * @return String helloworld
      */
     private String helloWorld(String name) {
-        lock.lock();
+        //lock.lock();
         try {
         System.out.println("BAJOBONGO TU SIE ROZPOCZYNA HELLO WORLD");
-        System.out.println("BAJOBONGO CONNECTION ACTIVE JEST JUZ TRUE");
         if (mc == null) {
             try {
                 System.out.println("BAJOBONGO W OGOLE IDZIE JAKIES ASSOCIATE");
@@ -84,11 +83,10 @@ public class StressTestConnectionImpl implements StressTestConnection {
             }
         }
         introduceRandomError();
-        System.out.println("BAJOBONGO CONNECTION ACTIVE JEST JUZ FALSE");
         return "Hello World, " + name + " !";
         }
         finally {
-            lock.unlock();
+            //lock.unlock();
         }
 
     }
@@ -104,7 +102,7 @@ public class StressTestConnectionImpl implements StressTestConnection {
      * Close
      */
     public void close() {
-        lock.lock();
+        //lock.lock();
         try {
         System.out.println("BAJOBONGO PROBOJE ZAMKNAC");
         if (mc == null) {
@@ -119,7 +117,7 @@ public class StressTestConnectionImpl implements StressTestConnection {
         mc.closeHandle(this);
         }
         finally {
-            lock.unlock();
+            //lock.unlock();
         }
 
     }
@@ -129,7 +127,7 @@ public class StressTestConnectionImpl implements StressTestConnection {
         try {
         mc = null;
         } finally {
-            lock.unlock();
+            //lock.unlock();
         }
     }
 }
