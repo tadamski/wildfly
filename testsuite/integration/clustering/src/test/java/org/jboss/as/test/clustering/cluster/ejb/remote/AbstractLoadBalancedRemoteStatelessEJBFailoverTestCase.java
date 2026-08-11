@@ -200,6 +200,7 @@ public abstract class AbstractLoadBalancedRemoteStatelessEJBFailoverTestCase ext
                     .setupScript(createScriptBuilder()
                             .startBatch()
                             .add("/subsystem=modcluster/proxy=default:write-attribute(name=advertise, value=false)")
+                            .add("/subsystem=modcluster/proxy=default:write-attribute(name=status-interval, value=1)")
                             .add("/socket-binding-group=standard-sockets/remote-destination-outbound-socket-binding=proxy1:add(host=localhost, port=8590)")
                             .add("/subsystem=modcluster/proxy=default:list-add(name=proxies, value=proxy1)")
                             .add("/subsystem=undertow/configuration=filter/custom-filter=request-dumper:add(class-name=\"io.undertow.server.handlers.RequestDumpingHandler\", module=\"io.undertow.core\")")
