@@ -647,6 +647,28 @@
         <xs:list itemType="xs:string"/>
     </xs:simpleType>
 
+    <xs:simpleType name="accessLogDestinationType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="console"/>
+            <xs:enumeration value="logging"/>
+            <xs:enumeration value="file"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="expressionType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="\$\{.*\}"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="accessLogDestinationOrExpressionType">
+        <xs:union memberTypes="accessLogDestinationType expressionType"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="booleanOrExpressionType">
+        <xs:union memberTypes="xs:boolean expressionType"/>
+    </xs:simpleType>
+
     <xs:complexType name="accessLogType">
         <xs:annotation>
             <xs:documentation>
@@ -656,21 +678,13 @@
         <xs:sequence minOccurs="0">
             <xs:element name="metadata" type="propertiesType" minOccurs="0"/>
         </xs:sequence>
-        <xs:attribute name="destination" default="file">
-            <xs:simpleType>
-                <xs:restriction base="xs:string">
-                    <xs:enumeration value="console"/>
-                    <xs:enumeration value="logging"/>
-                    <xs:enumeration value="file"/>
-                </xs:restriction>
-            </xs:simpleType>
-        </xs:attribute>
+        <xs:attribute name="destination" type="accessLogDestinationOrExpressionType" default="file"/>
         <xs:attribute name="path" type="xs:string" default="ejb-access.log"/>
         <xs:attribute name="relative-to" type="xs:string" default="jboss.server.log.dir"/>
         <xs:attribute name="rotate-suffix" type="xs:string" default=".yyyy-MM-dd"/>
         <xs:attribute name="worker" type="xs:string" default="default"/>
-        <xs:attribute name="include-local" type="xs:boolean" default="false"/>
-        <xs:attribute name="include-node-name" type="xs:boolean" default="true"/>
+        <xs:attribute name="include-local" type="booleanOrExpressionType" default="false"/>
+        <xs:attribute name="include-node-name" type="booleanOrExpressionType" default="true"/>
         <xs:attribute name="attributes" type="stringListType"/>
     </xs:complexType>
 
