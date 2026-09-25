@@ -68,7 +68,12 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
 
     @Override
     protected String getSubsystemXsdPath() throws Exception {
-        return "schema/wildfly-ejb3_11_0.xsd";
+        return "schema/wildfly-ejb3_12_0.xsd";
+    }
+
+    @Test
+    public void test11() throws Exception {
+        standardSubsystemTest("subsystem11.xml", false);
     }
 
     @Test
