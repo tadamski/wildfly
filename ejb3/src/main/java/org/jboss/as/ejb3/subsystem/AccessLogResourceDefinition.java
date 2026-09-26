@@ -16,6 +16,7 @@ import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
 import org.jboss.as.controller.StringListAttributeDefinition;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.operations.validation.EnumValidator;
 import org.jboss.as.controller.operations.validation.StringAllowedValuesValidator;
 import org.jboss.as.controller.registry.AttributeAccess;
@@ -27,6 +28,9 @@ import org.jboss.dmr.ModelType;
 import java.util.EnumSet;
 
 public class AccessLogResourceDefinition extends SimpleResourceDefinition {
+
+    static final RuntimeCapability<Void> ACCESS_LOG_CAPABILITY =
+            RuntimeCapability.Builder.of("org.wildfly.ejb3.access-log").build();
 
     static final SimpleAttributeDefinition DESTINATION =
             new SimpleAttributeDefinitionBuilder(EJB3SubsystemModel.DESTINATION, ModelType.STRING, true)
@@ -142,7 +146,8 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
     AccessLogResourceDefinition() {
         super(new Parameters(EJB3SubsystemModel.ACCESS_LOG_PATH, EJB3Extension.getResourceDescriptionResolver(EJB3SubsystemModel.SERVICE + "." + EJB3SubsystemModel.ACCESS_LOG))
                 .setAddHandler(new AccessLogAdd(ALL_CONFIG_ATTRIBUTES))
-                .setRemoveHandler(ReloadRequiredRemoveStepHandler.INSTANCE));
+                .setRemoveHandler(ReloadRequiredRemoveStepHandler.INSTANCE)
+                .addCapabilities(ACCESS_LOG_CAPABILITY));
     }
 
     @Override
