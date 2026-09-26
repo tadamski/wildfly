@@ -3255,4 +3255,7 @@ public interface EjbLogger extends BasicLogger {
 
     @Message(id = 536, value = "Unsupported EJB receiver protocol %s")
     IllegalArgumentException unsupportedEJBReceiverProtocol(String uriScheme);
+
+    @Message(id = 537, value = "Attributes 'path', 'relative-to', and 'rotate-suffix' are only allowed when 'destination' is 'file'")
+    OperationFailedException fileAttributesNotAllowedForDestination();
 }
