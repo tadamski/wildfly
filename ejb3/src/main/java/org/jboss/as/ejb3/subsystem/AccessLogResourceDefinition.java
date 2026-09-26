@@ -140,7 +140,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
     };
 
     AccessLogResourceDefinition() {
-        super(new Parameters(EJB3SubsystemModel.ACCESS_LOG_PATH, EJB3Extension.getResourceDescriptionResolver(EJB3SubsystemModel.ACCESS_LOG))
+        super(new Parameters(EJB3SubsystemModel.ACCESS_LOG_PATH, EJB3Extension.getResourceDescriptionResolver(EJB3SubsystemModel.SERVICE + "." + EJB3SubsystemModel.ACCESS_LOG))
                 .setAddHandler(new AccessLogAdd(ALL_CONFIG_ATTRIBUTES))
                 .setRemoveHandler(ReloadRequiredRemoveStepHandler.INSTANCE));
     }

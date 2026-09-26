@@ -152,7 +152,7 @@ public interface EJB3SubsystemModel {
     PathElement REMOTING_PROFILE_PATH = PathElement.pathElement(REMOTING_PROFILE);
     PathElement SIMPLE_CACHE_PATH = PathElement.pathElement(SIMPLE_CACHE);
     PathElement DISTRIBUTABLE_CACHE_PATH = PathElement.pathElement(DISTRIBUTABLE_CACHE);
-    PathElement ACCESS_LOG_PATH = PathElement.pathElement(ACCESS_LOG);
+    PathElement ACCESS_LOG_PATH = PathElement.pathElement(SERVICE, ACCESS_LOG);
 
     String BASE_EJB_THREAD_POOL_NAME = "ejb3";
     ServiceName BASE_THREAD_POOL_SERVICE_NAME = ThreadsServices.EXECUTOR.append(BASE_EJB_THREAD_POOL_NAME);
