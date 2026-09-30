@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.jboss.as.controller.PathAddress;
+import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.subsystem.test.AbstractSubsystemBaseTest;
@@ -69,6 +70,144 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     @Override
     protected String getSubsystemXsdPath() throws Exception {
         return "schema/wildfly-ejb3_12_0.xsd";
+    }
+
+    // -------------------------------------------------------------------------
+    // D6: access-log unit tests
+    // -------------------------------------------------------------------------
+
+    /**
+     * D6/1 — A bare &lt;access-log/&gt; must parse successfully and every attribute
+     * in the resulting model must carry its documented default value.
+     */
+    @Test
+    public void testAccessLogDefaults() throws Exception {
+        final String subsystemXml = readResource("subsystem-access-log-minimal.xml");
+        final KernelServices ks = createKernelServicesBuilder(createAdditionalInitialization())
+                .setSubsystemXml(subsystemXml).build();
+        assertTrue("Subsystem boot failed: " + ks.getBootError(), ks.isSuccessfulBoot());
+
+        final ModelNode model = ks.readWholeModel()
+                .get("subsystem", "ejb3", "service", "access-log");
+
+        // destination default: "file"
+        assertEquals("destination default", "file", model.get("destination").asString());
+
+        // path default: "ejb-access.log"
+        assertEquals("path default", "ejb-access.log", model.get("path").asString());
+
+        // relative-to default: "jboss.server.log.dir"
+        assertEquals("relative-to default", "jboss.server.log.dir", model.get("relative-to").asString());
+
+        // rotate-suffix default: ".yyyy-MM-dd"
+        assertEquals("rotate-suffix default", ".yyyy-MM-dd", model.get("rotate-suffix").asString());
+
+        // worker default: "default"
+        assertEquals("worker default", "default", model.get("worker").asString());
+
+        // include-local default: false
+        assertFalse("include-local default", model.get("include-local").asBoolean());
+
+        // include-node-name default: true
+        assertTrue("include-node-name default", model.get("include-node-name").asBoolean());
+
+        // attributes: no default set in AttributeDefinition — must be undefined
+        assertFalse("attributes should be undefined when not specified",
+                model.hasDefined("attributes"));
+    }
+
+    /**
+     * D6/2 — Expression-capable attributes in access-log must resolve correctly.
+     * Exercises destination, path, relative-to, rotate-suffix, include-local,
+     * include-node-name, and metadata (the §1 "expr yes" set).
+     * worker and attributes are expr=no and are NOT tested here.
+     */
+    @Test
+    public void testAccessLogExpressions() throws Exception {
+        final String subsystemXml = readResource("with-expression-subsystem.xml");
+        final KernelServices ks = createKernelServicesBuilder(createAdditionalInitialization())
+                .setSubsystemXml(subsystemXml).build();
+        assertTrue("Subsystem boot failed: " + ks.getBootError(), ks.isSuccessfulBoot());
+
+        final ModelNode accessLog = ks.readWholeModel()
+                .get("subsystem", "ejb3", "service", "access-log");
+
+        assertEquals("file", accessLog.get("destination").resolve().asString());
+        assertEquals("ejb-access.log", accessLog.get("path").resolve().asString());
+        assertEquals("jboss.server.log.dir", accessLog.get("relative-to").resolve().asString());
+        assertEquals(".yyyy-MM-dd", accessLog.get("rotate-suffix").resolve().asString());
+        assertTrue("include-local resolved", accessLog.get("include-local").resolve().asBoolean());
+        assertFalse("include-node-name resolved", accessLog.get("include-node-name").resolve().asBoolean());
+
+        final ModelNode metadata = accessLog.get("metadata");
+        assertTrue("metadata defined", metadata.isDefined());
+        assertEquals("prod", metadata.get("env").resolve().asString());
+    }
+
+    /**
+     * D6/3a — destination="syslog" must be rejected (outside allowed values).
+     * The failure message must identify the bad value.
+     */
+    @Test
+    public void testAccessLogRejectBadDestination() throws Exception {
+        final String subsystemXml = readResource("subsystem-access-log-minimal.xml");
+        final KernelServices ks = createKernelServicesBuilder(createAdditionalInitialization())
+                .setSubsystemXml(subsystemXml).build();
+        assertTrue("Subsystem boot failed", ks.isSuccessfulBoot());
+
+        // First remove the access-log added by the fixture, then re-add with bad destination
+        final PathAddress accessLogAddress = PathAddress.pathAddress(
+                PathElement.pathElement("subsystem", "ejb3"),
+                PathElement.pathElement("service", "access-log"));
+
+        final ModelNode removeOp = Util.createRemoveOperation(accessLogAddress);
+        ModelNode removeResult = ks.executeOperation(removeOp);
+        assertEquals("remove should succeed: " + removeResult, "success",
+                removeResult.get("outcome").asString());
+
+        final ModelNode addOp = Util.createAddOperation(accessLogAddress);
+        addOp.get("destination").set("syslog");
+
+        final ModelNode result = ks.executeOperation(addOp);
+        assertEquals("operation should have failed", "failed", result.get("outcome").asString());
+        final String failDesc = result.get("failure-description").asString();
+        assertTrue("failure should mention 'syslog': " + failDesc, failDesc.contains("syslog"));
+        assertTrue("failure should mention 'destination': " + failDesc, failDesc.contains("destination"));
+    }
+
+    /**
+     * D6/3b — destination="console" together with path=... must be rejected
+     * (file-only attributes present for a non-file destination).
+     * The failure message must be specific.
+     */
+    @Test
+    public void testAccessLogRejectFileAttributesForConsole() throws Exception {
+        final String subsystemXml = readResource("subsystem-access-log-minimal.xml");
+        final KernelServices ks = createKernelServicesBuilder(createAdditionalInitialization())
+                .setSubsystemXml(subsystemXml).build();
+        assertTrue("Subsystem boot failed", ks.isSuccessfulBoot());
+
+        final PathAddress accessLogAddress = PathAddress.pathAddress(
+                PathElement.pathElement("subsystem", "ejb3"),
+                PathElement.pathElement("service", "access-log"));
+
+        final ModelNode removeOp = Util.createRemoveOperation(accessLogAddress);
+        ModelNode removeResult = ks.executeOperation(removeOp);
+        assertEquals("remove should succeed: " + removeResult, "success",
+                removeResult.get("outcome").asString());
+
+        final ModelNode addOp = Util.createAddOperation(accessLogAddress);
+        addOp.get("destination").set("console");
+        addOp.get("path").set("something.log");
+
+        final ModelNode result = ks.executeOperation(addOp);
+        assertEquals("operation should have failed", "failed", result.get("outcome").asString());
+        final String failDesc = result.get("failure-description").asString();
+        // EjbLogger message id=537: "Attributes 'path', 'relative-to', and 'rotate-suffix' are only allowed when 'destination' is 'file'"
+        assertTrue("failure should mention path/rotate-suffix/relative-to: " + failDesc,
+                failDesc.contains("path") || failDesc.contains("relative-to") || failDesc.contains("rotate-suffix"));
+        assertTrue("failure should mention destination 'file': " + failDesc,
+                failDesc.contains("file"));
     }
 
     @Test
