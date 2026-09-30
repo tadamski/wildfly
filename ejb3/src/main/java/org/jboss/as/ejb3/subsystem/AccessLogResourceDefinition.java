@@ -174,10 +174,25 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         resourceRegistration.registerMetric(EVENTS_DROPPED, METRIC_HANDLER);
     }
 
+    /**
+     * The live service instance, published by {@link AccessLogService} on start/stop.
+     * Singleton resource — one instance per server, so a static volatile is safe.
+     */
+    static volatile AccessLogService LIVE_SERVICE = null;
+
     private static final AbstractRuntimeOnlyHandler METRIC_HANDLER = new AbstractRuntimeOnlyHandler() {
         @Override
         protected void executeRuntimeStep(OperationContext context, ModelNode operation) throws OperationFailedException {
-            // Service not yet implemented (E1) - leaves result undefined
+            final AccessLogService service = LIVE_SERVICE;
+            if (service == null) {
+                return;
+            }
+            final String name = operation.get(
+                    org.jboss.as.controller.descriptions.ModelDescriptionConstants.NAME).asString();
+            final long value = EJB3SubsystemModel.EVENTS_LOGGED.equals(name)
+                    ? service.getEventsLogged()
+                    : service.getEventsDropped();
+            context.getResult().set(value);
         }
     };
 }
