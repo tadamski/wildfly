@@ -44,12 +44,15 @@ public class AccessLogService implements Service {
     private final Consumer<AccessLogService> serviceConsumer;
     private final Supplier<XnioWorker> worker;
 
-    // Configuration — resolved at add/performRuntime time
+    // Configuration — immutable (RESTART_RESOURCE_SERVICES attributes)
     private final String destination;
     private final String path;
     private final String rotateSuffix;
-    private final boolean includeNodeName;
-    private final java.util.Map<String, Object> metadata;
+
+    // Live-mutable configuration (RESTART_NONE attributes)
+    private volatile boolean includeLocal;
+    private volatile boolean includeNodeName;
+    private volatile java.util.Map<String, Object> metadata;
 
     // Mutable state published for the interceptor
     private volatile EventLogger eventLogger;
@@ -67,12 +70,14 @@ public class AccessLogService implements Service {
             final String destination,
             final String path,
             final String rotateSuffix,
+            final boolean includeLocal,
             final boolean includeNodeName,
             final java.util.Map<String, Object> metadata) {
         this.serviceConsumer = serviceConsumer;
         this.worker = worker;
         this.destination = destination;
         this.path = path;
+        this.includeLocal = includeLocal;
         this.rotateSuffix = rotateSuffix;
         this.includeNodeName = includeNodeName;
         this.metadata = metadata;
@@ -130,6 +135,21 @@ public class AccessLogService implements Service {
      */
     public EventLogger getEventLogger() {
         return eventLogger;
+    }
+
+    /** Sets include-local flag (live-mutable, RESTART_NONE). */
+    public void setIncludeLocal(final boolean includeLocal) {
+        this.includeLocal = includeLocal;
+    }
+
+    /** Sets include-node-name flag (live-mutable, RESTART_NONE). */
+    public void setIncludeNodeName(final boolean includeNodeName) {
+        this.includeNodeName = includeNodeName;
+    }
+
+    /** Sets metadata map (live-mutable, RESTART_NONE). */
+    public void setMetadata(final java.util.Map<String, Object> metadata) {
+        this.metadata = metadata;
     }
 
     /** Running total of events handed to the writer. */

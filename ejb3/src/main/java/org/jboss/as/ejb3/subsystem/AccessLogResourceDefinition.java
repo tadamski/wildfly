@@ -5,13 +5,17 @@
 
 package org.jboss.as.ejb3.subsystem;
 
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.jboss.as.controller.AbstractRuntimeOnlyHandler;
+import org.jboss.as.controller.AbstractWriteAttributeHandler;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PropertiesAttributeDefinition;
-import org.jboss.as.controller.ReloadRequiredRemoveStepHandler;
-import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
+import org.jboss.as.controller.ServiceRemoveStepHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
@@ -24,13 +28,12 @@ import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.controller.registry.Resource;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
-
-import java.util.EnumSet;
+import org.jboss.dmr.Property;
 
 public class AccessLogResourceDefinition extends SimpleResourceDefinition {
 
     static final RuntimeCapability<Void> ACCESS_LOG_CAPABILITY =
-            RuntimeCapability.Builder.of("org.wildfly.ejb3.access-log").build();
+            RuntimeCapability.Builder.of("org.wildfly.ejb3.access-log", AccessLogService.class).build();
 
     static final SimpleAttributeDefinition DESTINATION =
             new SimpleAttributeDefinitionBuilder(EJB3SubsystemModel.DESTINATION, ModelType.STRING, true)
@@ -143,10 +146,12 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
             DESTINATION, PATH, RELATIVE_TO, ROTATE_SUFFIX, WORKER, INCLUDE_LOCAL, INCLUDE_NODE_NAME, ATTRIBUTES, METADATA
     };
 
+    private static final AccessLogAdd ADD_HANDLER = new AccessLogAdd(ALL_CONFIG_ATTRIBUTES);
+
     AccessLogResourceDefinition() {
         super(new Parameters(EJB3SubsystemModel.ACCESS_LOG_PATH, EJB3Extension.getResourceDescriptionResolver(EJB3SubsystemModel.SERVICE + "." + EJB3SubsystemModel.ACCESS_LOG))
-                .setAddHandler(new AccessLogAdd(ALL_CONFIG_ATTRIBUTES))
-                .setRemoveHandler(ReloadRequiredRemoveStepHandler.INSTANCE)
+                .setAddHandler(ADD_HANDLER)
+                .setRemoveHandler(new ServiceRemoveStepHandler(ACCESS_LOG_CAPABILITY.getCapabilityServiceName(), ADD_HANDLER))
                 .addCapabilities(ACCESS_LOG_CAPABILITY));
     }
 
@@ -154,20 +159,84 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
     public void registerAttributes(ManagementResourceRegistration resourceRegistration) {
         super.registerAttributes(resourceRegistration);
 
-        ReloadRequiredWriteAttributeHandler reloadHandler = new ReloadRequiredWriteAttributeHandler(RESTART_RESOURCE_SERVICES_ATTRIBUTES) {
+        // RESTART_RESOURCE_SERVICES: remove and re-install the AccessLogService.
+        // This closes the old writer and opens a new one — no server reload required.
+        // NOTE: events queued in AsyncEventLogger at the moment of removal are lost
+        // (D20 gap — drain-on-stop fix lives in wildfly-core task H2).
+        AbstractWriteAttributeHandler<Void> restartServiceHandler = new AbstractWriteAttributeHandler<>(RESTART_RESOURCE_SERVICES_ATTRIBUTES) {
             @Override
             protected void validateUpdatedModel(OperationContext context, Resource resource) throws OperationFailedException {
                 super.validateUpdatedModel(context, resource);
                 AccessLogAdd.validateDestinationAttributes(resource.getModel());
             }
+
+            @Override
+            protected boolean applyUpdateToRuntime(OperationContext context, ModelNode operation,
+                    String attributeName, ModelNode resolvedValue, ModelNode currentValue,
+                    HandbackHolder<Void> handbackHolder) throws OperationFailedException {
+                // Remove the current service, then re-install with the updated model.
+                context.removeService(ACCESS_LOG_CAPABILITY.getCapabilityServiceName());
+                ADD_HANDLER.performRuntime(context, operation, context.readResource(org.jboss.as.controller.PathAddress.EMPTY_ADDRESS).getModel());
+                return false; // false = no reload required
+            }
+
+            @Override
+            protected void revertUpdateToRuntime(OperationContext context, ModelNode operation,
+                    String attributeName, ModelNode valueToRestore, ModelNode resolvedValue,
+                    Void handback) throws OperationFailedException {
+                // Revert by re-installing with the original model (already restored by the framework).
+                context.removeService(ACCESS_LOG_CAPABILITY.getCapabilityServiceName());
+                ADD_HANDLER.performRuntime(context, operation, context.readResource(org.jboss.as.controller.PathAddress.EMPTY_ADDRESS).getModel());
+            }
         };
 
         for (AttributeDefinition attr : RESTART_RESOURCE_SERVICES_ATTRIBUTES) {
-            resourceRegistration.registerReadWriteAttribute(attr, null, reloadHandler);
+            resourceRegistration.registerReadWriteAttribute(attr, null, restartServiceHandler);
         }
 
+        // RESTART_NONE: mutate live state directly — no service restart, no reload.
+        AbstractWriteAttributeHandler<Void> liveStateHandler = new AbstractWriteAttributeHandler<>(RESTART_NONE_ATTRIBUTES) {
+            @Override
+            protected boolean applyUpdateToRuntime(OperationContext context, ModelNode operation,
+                    String attributeName, ModelNode resolvedValue, ModelNode currentValue,
+                    HandbackHolder<Void> handbackHolder) throws OperationFailedException {
+                final AccessLogService service = LIVE_SERVICE;
+                if (service == null) {
+                    return false;
+                }
+                switch (attributeName) {
+                    case EJB3SubsystemModel.INCLUDE_LOCAL:
+                        service.setIncludeLocal(resolvedValue.asBoolean());
+                        break;
+                    case EJB3SubsystemModel.INCLUDE_NODE_NAME:
+                        service.setIncludeNodeName(resolvedValue.asBoolean());
+                        break;
+                    case EJB3SubsystemModel.METADATA:
+                        final Map<String, Object> metadata = new LinkedHashMap<>();
+                        if (resolvedValue.isDefined()) {
+                            for (Property p : resolvedValue.asPropertyList()) {
+                                metadata.put(p.getName(), p.getValue().asString());
+                            }
+                        }
+                        service.setMetadata(metadata);
+                        break;
+                    default:
+                        break;
+                }
+                return false; // false = no reload required
+            }
+
+            @Override
+            protected void revertUpdateToRuntime(OperationContext context, ModelNode operation,
+                    String attributeName, ModelNode valueToRestore, ModelNode resolvedValue,
+                    Void handback) throws OperationFailedException {
+                // Re-apply the reverted value using the same switch logic.
+                applyUpdateToRuntime(context, operation, attributeName, valueToRestore, resolvedValue, new HandbackHolder<>());
+            }
+        };
+
         for (AttributeDefinition attr : RESTART_NONE_ATTRIBUTES) {
-            resourceRegistration.registerReadWriteAttribute(attr, null, new org.jboss.as.controller.ModelOnlyWriteAttributeHandler(attr));
+            resourceRegistration.registerReadWriteAttribute(attr, null, liveStateHandler);
         }
 
         resourceRegistration.registerMetric(EVENTS_LOGGED, METRIC_HANDLER);

@@ -41,6 +41,7 @@ public class AccessLogAdd extends AbstractAddStepHandler {
         final String path = AccessLogResourceDefinition.PATH.resolveModelAttribute(context, model).asString();
         final String rotateSuffix = AccessLogResourceDefinition.ROTATE_SUFFIX.resolveModelAttribute(context, model).asString();
         final String worker = AccessLogResourceDefinition.WORKER.resolveModelAttribute(context, model).asString();
+        final boolean includeLocal = AccessLogResourceDefinition.INCLUDE_LOCAL.resolveModelAttribute(context, model).asBoolean();
         final boolean includeNodeName = AccessLogResourceDefinition.INCLUDE_NODE_NAME.resolveModelAttribute(context, model).asBoolean();
 
         final ModelNode metadataNode = AccessLogResourceDefinition.METADATA.resolveModelAttribute(context, model);
@@ -58,7 +59,7 @@ public class AccessLogAdd extends AbstractAddStepHandler {
 
         final AccessLogService service = new AccessLogService(
                 serviceConsumer, workerSupplier,
-                destination, path, rotateSuffix, includeNodeName, metadata);
+                destination, path, rotateSuffix, includeLocal, includeNodeName, metadata);
         sb.setInstance(service)
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .install();
