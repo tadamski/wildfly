@@ -17,6 +17,7 @@ import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.CapabilityServiceBuilder;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
+import org.jboss.as.controller.services.path.PathManager;
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
@@ -41,8 +42,17 @@ public class AccessLogAdd extends AbstractAddStepHandler {
     protected void performRuntime(final OperationContext context, final ModelNode operation, final ModelNode model)
             throws OperationFailedException {
         final String destination = AccessLogResourceDefinition.DESTINATION.resolveModelAttribute(context, model).asString();
-        final String path = AccessLogResourceDefinition.PATH.resolveModelAttribute(context, model).asString();
-        final String rotateSuffix = AccessLogResourceDefinition.ROTATE_SUFFIX.resolveModelAttribute(context, model).asString();
+        // Resolve path/relativeTo/rotateSuffix including defaults — used when destination=file.
+        final ModelNode pathNode = AccessLogResourceDefinition.PATH.resolveModelAttribute(context, model);
+        final String path = pathNode.isDefined() ? pathNode.asString() : null;
+        final ModelNode relativeToNode = AccessLogResourceDefinition.RELATIVE_TO.resolveModelAttribute(context, model);
+        final String relativeTo = relativeToNode.isDefined() ? relativeToNode.asString() : null;
+        final ModelNode rotateSuffixNode = AccessLogResourceDefinition.ROTATE_SUFFIX.resolveModelAttribute(context, model);
+        final String rotateSuffix = rotateSuffixNode.isDefined() ? rotateSuffixNode.asString() : "";
+        // Track whether operator explicitly set any file attr — raw model, not resolved.
+        final boolean fileAttrsExplicitlySet = model.hasDefined(EJB3SubsystemModel.PATH)
+                || model.hasDefined(EJB3SubsystemModel.RELATIVE_TO)
+                || model.hasDefined(EJB3SubsystemModel.ROTATE_SUFFIX);
         final String worker = AccessLogResourceDefinition.WORKER.resolveModelAttribute(context, model).asString();
         final boolean includeLocal = AccessLogResourceDefinition.INCLUDE_LOCAL.resolveModelAttribute(context, model).asBoolean();
         final boolean includeNodeName = AccessLogResourceDefinition.INCLUDE_NODE_NAME.resolveModelAttribute(context, model).asBoolean();
@@ -78,10 +88,12 @@ public class AccessLogAdd extends AbstractAddStepHandler {
                 .addCapability(AccessLogResourceDefinition.ACCESS_LOG_CAPABILITY);
         final Consumer<AccessLogService> serviceConsumer = sb.provides(AccessLogResourceDefinition.ACCESS_LOG_CAPABILITY);
         final Supplier<XnioWorker> workerSupplier = sb.requiresCapability("org.wildfly.io.worker", XnioWorker.class, worker);
+        final Supplier<PathManager> pathManagerSupplier = sb.requires(PathManager.SERVICE_DESCRIPTOR);
 
         final AccessLogService service = new AccessLogService(
-                serviceConsumer, workerSupplier,
-                destination, path, rotateSuffix, enabledAttributes, includeLocal, includeNodeName, metadata);
+                serviceConsumer, workerSupplier, pathManagerSupplier,
+                destination, path, relativeTo, rotateSuffix, fileAttrsExplicitlySet,
+                enabledAttributes, includeLocal, includeNodeName, metadata);
         sb.setInstance(service)
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .install();

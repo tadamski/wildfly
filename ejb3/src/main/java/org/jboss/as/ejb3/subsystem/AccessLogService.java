@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.jboss.as.controller.services.path.PathManager;
+import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.msc.Service;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
@@ -49,12 +51,21 @@ public class AccessLogService implements Service {
 
     private final Consumer<AccessLogService> serviceConsumer;
     private final Supplier<XnioWorker> worker;
+    private final Supplier<PathManager> pathManager;
 
     // Configuration — immutable (RESTART_RESOURCE_SERVICES attributes)
     private final String destination;
+    /** Relative file path component (e.g. "ejb-access.log"). May be null only when destination != file. */
     private final String path;
+    /** Base path name passed to PathManager (e.g. "jboss.server.log.dir"). Null means treat path as absolute. */
+    private final String relativeTo;
     private final String rotateSuffix;
-    /** Enabled log fields; defaults to all 13 tokens when the model attribute is UNDEFINED. */
+    /**
+     * True when the operator explicitly supplied at least one of path/relative-to/rotate-suffix.
+     * Used to detect the expression-destination case at service start.
+     */
+    private final boolean fileAttrsExplicitlySet;
+    /** Enabled log fields; defaults to all tokens when the model attribute is UNDEFINED. */
     private final Set<AccessLogResourceDefinition.AttributeVocabulary> enabledAttributes;
 
     // Live-mutable configuration (RESTART_NONE attributes)
@@ -75,20 +86,26 @@ public class AccessLogService implements Service {
     AccessLogService(
             final Consumer<AccessLogService> serviceConsumer,
             final Supplier<XnioWorker> worker,
+            final Supplier<PathManager> pathManager,
             final String destination,
             final String path,
+            final String relativeTo,
             final String rotateSuffix,
+            final boolean fileAttrsExplicitlySet,
             final Set<AccessLogResourceDefinition.AttributeVocabulary> enabledAttributes,
             final boolean includeLocal,
             final boolean includeNodeName,
             final java.util.Map<String, Object> metadata) {
         this.serviceConsumer = serviceConsumer;
         this.worker = worker;
+        this.pathManager = pathManager;
         this.destination = destination;
         this.path = path;
+        this.relativeTo = relativeTo;
+        this.rotateSuffix = rotateSuffix;
+        this.fileAttrsExplicitlySet = fileAttrsExplicitlySet;
         this.enabledAttributes = enabledAttributes;
         this.includeLocal = includeLocal;
-        this.rotateSuffix = rotateSuffix;
         this.includeNodeName = includeNodeName;
         this.metadata = metadata;
     }
@@ -186,20 +203,34 @@ public class AccessLogService implements Service {
 
     // -------------------------------------------------------------------------
 
-    private EventWriter buildWriter(final JsonEventFormatter formatter) throws IOException {
+    private EventWriter buildWriter(final JsonEventFormatter formatter) throws IOException, StartException {
         switch (destination) {
             case "console":
+                warnFileAttributesIfSet(destination);
                 return StdoutEventWriter.of(formatter);
             case "logging":
+                warnFileAttributesIfSet(destination);
                 return LoggerEventWriter.of(LOG_CATEGORY, formatter);
             case "file":
-            default:
-                // E5 will resolve relative-to via PathManager; for now use the path as-is.
-                final Path filePath = Paths.get(path);
+            default: {
+                final String resolved = pathManager.get().resolveRelativePathEntry(path, relativeTo);
+                final Path filePath = Paths.get(resolved);
                 if (filePath.getParent() != null) {
                     java.nio.file.Files.createDirectories(filePath.getParent());
                 }
                 return FileEventWriter.open(filePath, formatter, rotateSuffix);
+            }
+        }
+    }
+
+    /**
+     * Fails the service start if file-only attributes were explicitly supplied alongside a
+     * non-file destination. This catches the expression-destination case that model-time
+     * validation cannot see because the destination value was an expression.
+     */
+    private void warnFileAttributesIfSet(final String resolvedDestination) throws StartException {
+        if (fileAttrsExplicitlySet) {
+            throw EjbLogger.ROOT_LOGGER.fileAttributesIgnoredForNonFileDestination(resolvedDestination);
         }
     }
 
