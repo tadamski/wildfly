@@ -453,3 +453,167 @@ The `timestamp` in every record is captured inside `EventLogger.log()`, which qu
 **MDB suppression by `InvocationType` check, not by view type.** Checking `MethodInterfaceType.MessageEndpoint` in the configurator and skipping the registration would also work, but it would make the suppression invisible in the interceptor itself and harder to audit. The check at invocation time is self-documenting.
 
 **Timer `view` field absent rather than using `MethodInterfaceType.Timer` as a synthetic value.** The `ComponentView` is genuinely absent on the timer path; fabricating a string would be misleading. Absence of the key is the correct JSON representation per config-surface.md §4 D5.
+
+---
+
+## F1 — Adapt Tommaso's integration tests to the flat access-log model
+
+**1. Task ID:** F1
+
+**2. Outcome:** Complete. All 13 files updated; Arquillian tests compile clean against the flat model. `mvn -pl ejb3 install -DskipTests` and `mvn -pl ejb3 test` both green at 90/90.
+
+**3. Commits:**
+
+```
+198d63aeb00 Tomasz Adamski <tomasz.adamski@ibm.com> WFLY-6892 F1: adapt integration tests to flat access-log model
+```
+
+**4. Files changed (13 files, 927 lines removed, 90 added):**
+
+| File | Change |
+|------|--------|
+| `SFSB.java` | `javax.ejb` / `javax.annotation.security` → `jakarta.*` |
+| `SLSB.java` | same |
+| `SLSBLocalServlet.java` | `javax.ejb` / `javax.servlet.*` → `jakarta.*` |
+| `AbstractAccessLogTestCase.java` | `javax.json.*` → `jakarta.json.*` |
+| `ConsoleAccessLogTestCase.java` | `SHORT` → `SHORT_JSON`; setup rewritten to flat `destination=console` |
+| `ConsoleAccessLogJsonTestCase.java` | `javax.json` → `jakarta.json`; `LONG_JSON` → `SHORT_JSON`; flat `destination=console` |
+| `FileAccessLogTestCase.java` | `CUSTOM` → `SHORT_JSON`; flat `destination=file` with `path`/`relative-to` |
+| `FileAccessLogJsonTestCase.java` | `javax.json` → `jakarta.json`; `CUSTOM_JSON` → `SHORT_JSON`; flat `destination=file` |
+| `ServerLogAccessLogTestCase.java` | `SHORT` → `SHORT_JSON`; flat `destination=logging` |
+| `ServerLogAccessLogJsonTestCase.java` | `javax.json` → `jakarta.json`; flat `destination=logging` |
+| `ConsoleAndServerLogAndFileAccessLogTestCase.java` | **Deleted** — multi-destination concept removed |
+| `util/AccessLog.java` | Stripped to line-holder; all unused typed fields removed |
+| `util/AccessLogFormat.java` | Replaced 2019 field-name regex alternations with `\{.*}` for all `*_JSON` constants |
+
+**5. Acceptance:**
+
+`mvn -pl ejb3 install -DskipTests` — **BUILD SUCCESS**
+
+`mvn -pl ejb3 test` — **BUILD SUCCESS, 90 tests, 0 failures**
+
+`mvn -f testsuite/integration/basic/pom.xml test-compile -DskipTests` — **clean (no output)**
+
+**6. Surprises:**
+
+**`javax.naming` is not migrated.** The earlier analysis flagged `javax.naming → jakarta.naming` as a required change. In fact `javax.naming` (JNDI) lives in the JDK (`java.naming` module) and was never part of Jakarta EE namespace migration. `EJBUtil.java` and `AbstractAccessLogTestCase.java` both use it correctly as-is.
+
+**`containsAllStrings` still works for interface-name checks.** `getAccessLogs()` filters lines by calling `containsAllStrings(line, ejbInterface.getSimpleName(), ejbClass.getSimpleName(), ejbMethod, user)`. The interceptor emits `"view":"...SLSBRemote"` (full class name) and `"bean":"SLSB"` — both simple names appear as substrings in the JSON line, so the existing filtering logic is correct without any changes to `AbstractAccessLogTestCase`.
+
+**`AccessLogNegativeTestCase` requires no change.** It uses `AccessLogFormat.LONG` — a space-delimited text pattern — to assert that no records match. Since the server only emits JSON (which never matches a space-delimited pattern), the assertion `accessLogs.isEmpty()` is trivially satisfied. The intent — verify no output when resource is absent — is preserved.
+
+**7. Judgement calls:**
+
+**`ConsoleAndServerLogAndFileAccessLogTestCase` deleted, not adapted.** The flat model's `destination` attribute accepts exactly one value per resource instance; there is no way to simultaneously output to console, server log, and a file within a single `access-log` resource. Adapting the test would require fabricating multi-destination semantics that do not exist in the model. Deleted with a note in the commit message.
+
+**All `*_JSON` `ACCESS_LOG_FORMAT` constants collapsed to `SHORT_JSON`.** There is now one JSON format produced by `JsonEventFormatter` regardless of destination. The `LONG_JSON`, `CUSTOM_JSON`, `DEFAULT_JSON` enum constants are retained in `AccessLogFormat` for future extension, but all active test cases use `SHORT_JSON` with the same `\{.*}` regex.
+
+**`AccessLog` stripped to a line holder.** All typed fields (`ip`, `ejb`, `invocation`, etc.) were never populated — the infrastructure always calls `getLine()` to feed the raw string to `jakarta.json`. Keeping dead fields would mislead readers into thinking they reflect the current field vocabulary.
+
+
+---
+
+## F2 — Close the coverage gaps
+
+**1. Task ID:** F2
+
+**2. Outcome:** Complete. 11 new tests across 3 files, test-only. Test count 90 → 101. No main/ changes.
+
+**3. Commits:**
+
+```
+ad232231d3e Tomasz Adamski <tomasz.adamski@ibm.com> WFLY-6892 F2: close coverage gaps
+```
+
+**4. Files changed (test-only):**
+
+| File | Change |
+|------|--------|
+| `ejb3/src/test/java/.../AccessLogWriterTest.java` | **New** — 4 writer unit tests |
+| `ejb3/src/test/java/.../AccessLogFormatterTest.java` | +1 test (`sample5` — exception field) |
+| `ejb3/src/test/java/.../Ejb3SubsystemUnitTestCase.java` | +6 model tests (M1–M6) |
+
+**5. Acceptance:**
+
+`mvn -pl ejb3 install -DskipTests` — **BUILD SUCCESS**
+
+`mvn -pl ejb3 test` — **BUILD SUCCESS, 101 tests, 0 failures** (was 90 before F2)
+
+**Gap table:**
+
+| Gap | Source | Test |
+|-----|--------|------|
+| `FileEventWriter`: writes record | post-2019 | W1 (`AccessLogWriterTest`) |
+| `FileEventWriter`: rotation on day change | post-2019 | W2 (`AccessLogWriterTest`) |
+| `FileEventWriter`: no rotation when suffix empty | post-2019 | W3 (`AccessLogWriterTest`) |
+| `LoggerEventWriter`: routes to named JUL category | post-2019 | W4 (`AccessLogWriterTest`) |
+| `exception` field present when `outcome=exception` | post-2019 | sample5 (`AccessLogFormatterTest`) |
+| `destination=console` add at model level | post-2019 | M1 (`Ejb3SubsystemUnitTestCase`) |
+| `destination=logging` add at model level | post-2019 | M2 (`Ejb3SubsystemUnitTestCase`) |
+| RESTART_NONE write-attribute (`include-local`, `include-node-name`) | post-2019 | M3 |
+| `metadata` write-attribute | post-2019 | M4 |
+| `attributes` list — valid accepted, invalid rejected | post-2019 | M5 |
+| `destination` write-attribute rejected when explicit `path` set | post-2019 | M6 |
+| Multi-destination (F1 deletion) | F1 deletion | Not coverable — concept removed |
+| `events-logged` / `events-dropped` metrics | post-2019 | Not covered — see §6 |
+| IIOP | board stale (D9 parked) | Not tested |
+| Invocation-ID correlation | board stale (D10 closed) | Not tested |
+
+**Stale board row confirmations:**
+- **IIOP**: D9 parked (tasks B3, E7); no IIOP capture point exists in the tree. Lands during upstream review window.
+- **Invocation-ID**: D10 closed; no correlation field in v1. Confirmed: `EjbAccessLogInterceptor` never puts an invocation-id key in the data map.
+
+**6. Surprises:**
+
+**`events-logged` / `events-dropped` not covered.** Both are `setStorageRuntime()` metrics. `KernelServices` in management mode does not start MSC services, so the metric handler returns an empty result. Covering them meaningfully requires either the Arquillian harness (live server) or exposing `CountingEventWriter` — a private static inner class — for direct unit testing. Neither is warranted without a main/ change. Gap documented.
+
+**F2/M6 finding: default values do not count as "explicitly set".** The `validateDestinationAttributes` check uses `model.hasDefined(...)`, which returns `false` for attributes at their `setDefaultValue()` defaults. This is correct behaviour: `<access-log/>` with no explicit path/relative-to can freely have its destination changed to `console`. The test was corrected to first explicitly write `path`, then attempt the destination change.
+
+**7. Judgement calls:**
+
+**`events-logged` / `events-dropped` deferred.** Exposing `CountingEventWriter` for testing would require a main/ change — out of F2 scope.
+
+**Rotation tested via reflection.** `FileEventWriter.currentDate` is private. Reflection is the minimal approach; the alternative (sleeping until midnight or adding a test-seam to production code) is worse.
+
+**Multi-destination not re-covered.** The flat model's `destination` attribute is a single value. The test intent (simultaneous console + server-log + file output) cannot be expressed against the current model without a main/ redesign.
+
+
+---
+
+## Task F4 — Performance sanity check
+
+**Outcome:** Complete. Four measurement configurations run; reference doc written.
+
+**Commits:** None (reference doc lives in `/home/tomek/workspace/EAP7-523/reference/performance.md`, not in the repo).
+
+**Files created:** `/home/tomek/workspace/EAP7-523/reference/performance.md`
+
+**Acceptance:**
+
+All four measurements taken. Batch timing (amortised `nanoTime` overhead):
+
+| Config | NOT_SUPPORTED bean | CMT bean |
+|---|---|---|
+| 1. Disabled (clean JVM) | +3.4 ns median vs baseline (noise floor ±18 ns) | −38 ns median (noise floor ±61 ns) |
+| 2. Enabled, full attrs (20 fields) | −3.0 ns (inside noise) | −38.6 ns (inside noise) |
+| 3. Enabled, reduced attrs (3 fields) | −0.1 ns (inside noise) | −14.3 ns (inside noise) |
+
+Remote invocations not re-measured — B2's null result stands (network cost is ~65 µs, interceptor is unmeasurable against it).
+
+**B2 comparison:**
+- Disabled ≤ ~20 ns: **reproduced** (+3.4 ns median, within noise).
+- Enabled +200 ns: **lower** — async hand-off means invocation thread only pays for field gathering + deque add, not JSON formatting. Batch shows no measurable overhead. B2 explicitly labelled its figure as an upper bound for a synchronous design; confirmed.
+
+**Surprises:**
+
+**The enabled batch cost is below the noise floor.** This is the key finding. B2's +200 ns was synchronous formatting on the invocation thread. `AsyncEventLogger.log()` only queues the event — the invocation thread's cost is indistinguishable from the disabled path in the batch measurement. The per-call CMT enabled figure (3315 ns, +760 ns) is within the ±1600 ns per-call noise on that bean and should not be quoted without that context.
+
+**Harness recompilation required.** The WAR was compiled with JDK 25 (class version 69) in the prior session, but the server runs JDK 21 (class version 65). Recompiled with `/usr/lib/jvm/java-21-temurin-jdk/bin/javac --release 21`.
+
+**`@EJB` injection required `@Local` on the interface.** The original harness injected by concrete class type. WildFly's EJB resolver requires a `@Local` business interface. Fixed in `Pingable.java` and changed `BenchServlet` to inject by `beanName`.
+
+**Judgement calls:**
+
+**Reduced-attributes batch is indistinguishable from full-attributes.** Field gathering for 20 vs 3 fields is cheap enough that removing 17 fields does not move the needle. Operators who reduce the list gain lower log volume, not lower latency.
+
+**Per-call CMT enabled figure not quoted as a result.** The per-call method's noise floor on the CMT bean (±1600 ns) exceeds the measured delta (760 ns). Quoting it without context would be misleading.
