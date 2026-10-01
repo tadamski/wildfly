@@ -259,4 +259,34 @@ public class AccessLogFormatterTest {
         assertFalse(obj.containsKey("threadName"));
         assertFalse(obj.containsKey("nodeName"));
     }
+
+    // -------------------------------------------------------------------------
+    // Sample 5 — exception field present when outcome=exception (F2)
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void sample5_exceptionFieldPresentWhenOutcomeIsException() {
+        // The interceptor adds "exception" only when outcome="exception".
+        final Map<String, Object> data = new LinkedHashMap<>();
+        data.put("bean",      "SecureBean");
+        data.put("method",    "adminOp()");
+        data.put("outcome",   "exception");
+        data.put("exception", "jakarta.ejb.EJBAccessException");
+        data.put("duration",  0L);
+
+        final JsonObject obj = format(data);
+
+        assertEquals("exception",                      obj.getString("outcome"));
+        assertEquals("jakarta.ejb.EJBAccessException", obj.getString("exception"));
+
+        // When outcome=success the exception key must be absent (no field put in map)
+        final Map<String, Object> success = new LinkedHashMap<>();
+        success.put("bean",    "SecureBean");
+        success.put("method",  "adminOp()");
+        success.put("outcome", "success");
+        success.put("duration", 0L);
+
+        final JsonObject successObj = format(success);
+        assertFalse("exception key must be absent on success", successObj.containsKey("exception"));
+    }
 }
