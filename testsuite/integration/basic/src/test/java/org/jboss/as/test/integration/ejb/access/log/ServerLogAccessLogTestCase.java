@@ -36,7 +36,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REM
 @RunWith(Arquillian.class)
 @ServerSetup(ServerLogAccessLogTestCase.EjbAccessLogSetupTask.class)
 public class ServerLogAccessLogTestCase extends AbstractAccessLogTestCase {
-    private static final AccessLogFormat ACCESS_LOG_FORMAT = AccessLogFormat.SHORT;
+    private static final AccessLogFormat ACCESS_LOG_FORMAT = AccessLogFormat.SHORT_JSON;
 
     /**
      * Retrieve the path to server log file and store it's location so that it can be used by tests run in container / out of container
@@ -107,9 +107,7 @@ public class ServerLogAccessLogTestCase extends AbstractAccessLogTestCase {
 
         @Override
         public void setup(ManagementClient managementClient, String s) throws Exception {
-            System.out.println("\n\nsetup\n\n");
-
-            // /subsystem=ejb3/service=access-log:add
+            // /subsystem=ejb3/service=access-log:add(destination=logging)
             address = new ModelNode();
             address.add("subsystem", "ejb3");
             address.add("service", "access-log");
@@ -117,42 +115,10 @@ public class ServerLogAccessLogTestCase extends AbstractAccessLogTestCase {
             operation = new ModelNode();
             operation.get(OP).set(ADD);
             operation.get(OP_ADDR).set(address);
+            operation.get("destination").set("logging");
             result = managementClient.getControllerClient().execute(operation);
             if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server with `" + operation.asString() + "`: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/pattern-formatter=p1:add(name=p1,
-            // pattern=\"date time\")
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("pattern-formatter", "p1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(ADD);
-            operation.get(OP_ADDR).set(address);
-            operation.get("name").set("p1");
-            operation.get("pattern").set(ACCESS_LOG_FORMAT.getPattern());
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server with `" + operation.asString() + "`: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/server-log-handler=server1:add(name=server1,formatter=p1)
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("server-log-handler", "server1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(ADD);
-            operation.get(OP_ADDR).set(address);
-            operation.get("name").set("server1");
-            operation.get("formatter").set("p1");
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server with `" + operation.asString() + "`: " + result.asString());
+                throw new Exception("Can't configure server: " + result.asString());
             }
 
             ServerReload.executeReloadAndWaitForCompletion(managementClient.getControllerClient(), 50000);
@@ -160,36 +126,6 @@ public class ServerLogAccessLogTestCase extends AbstractAccessLogTestCase {
 
         @Override
         public void tearDown(ManagementClient managementClient, String s) throws Exception {
-            System.out.println("\n\ntearDown\n\n");
-
-            // /subsystem=ejb3/service=access-log/server-log-handler=server1:remove
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("server-log-handler", "server1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(REMOVE);
-            operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server with `" + operation.asString() + "`: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/pattern-formatter=p1:remove
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("pattern-formatter", "p1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(REMOVE);
-            operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server with `" + operation.asString() + "`: " + result.asString());
-            }
-
             // /subsystem=ejb3/service=access-log:remove
             address = new ModelNode();
             address.add("subsystem", "ejb3");
@@ -200,7 +136,7 @@ public class ServerLogAccessLogTestCase extends AbstractAccessLogTestCase {
             operation.get(OP_ADDR).set(address);
             result = managementClient.getControllerClient().execute(operation);
             if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server with `" + operation.asString() + "`: " + result.asString());
+                throw new Exception("Can't configure server: " + result.asString());
             }
 
             ServerReload.executeReloadAndWaitForCompletion(managementClient.getControllerClient(), 50000);

@@ -29,7 +29,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REM
 @RunWith(Arquillian.class)
 @ServerSetup(ConsoleAccessLogTestCase.EjbAccessLogSetupTask.class)
 public class ConsoleAccessLogTestCase extends AbstractConsoleAccessLogTestCase {
-    private static final AccessLogFormat ACCESS_LOG_FORMAT = AccessLogFormat.SHORT;
+    private static final AccessLogFormat ACCESS_LOG_FORMAT = AccessLogFormat.SHORT_JSON;
 
     @Deployment
     public static Archive createDeployment() {
@@ -60,9 +60,7 @@ public class ConsoleAccessLogTestCase extends AbstractConsoleAccessLogTestCase {
 
         @Override
         public void setup(ManagementClient managementClient, String s) throws Exception {
-            System.out.println("\n\nsetup\n\n");
-
-            // /subsystem=ejb3/service=access-log:add
+            // /subsystem=ejb3/service=access-log:add(destination=console)
             address = new ModelNode();
             address.add("subsystem", "ejb3");
             address.add("service", "access-log");
@@ -70,40 +68,7 @@ public class ConsoleAccessLogTestCase extends AbstractConsoleAccessLogTestCase {
             operation = new ModelNode();
             operation.get(OP).set(ADD);
             operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/pattern-formatter=p1:add(name=p1, pattern=\"short\")
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("pattern-formatter", "p1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(ADD);
-            operation.get(OP_ADDR).set(address);
-            operation.get("name").set("p1");
-            // short: date time ip user ejb method
-            // e.g. 2019-05-05 12:23:27,003 127.0.0.1 admin hello/helloBean hello
-            operation.get("pattern").set(ACCESS_LOG_FORMAT.getPattern());
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/console-handler=console1:add(name=console1,formatter=p1)
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("console-handler", "console1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(ADD);
-            operation.get(OP_ADDR).set(address);
-            operation.get("name").set("console1");
-            operation.get("formatter").set("p1");
+            operation.get("destination").set("console");
             result = managementClient.getControllerClient().execute(operation);
             if (!Operations.isSuccessfulOutcome(result)) {
                 throw new Exception("Can't configure server: " + result.asString());
@@ -114,36 +79,6 @@ public class ConsoleAccessLogTestCase extends AbstractConsoleAccessLogTestCase {
 
         @Override
         public void tearDown(ManagementClient managementClient, String s) throws Exception {
-            System.out.println("\n\ntearDown\n\n");
-
-            // /subsystem=ejb3/service=access-log/console-handler=console1:remove
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("console-handler", "console1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(REMOVE);
-            operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/pattern-formatter=p1:remove
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("pattern-formatter", "p1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(REMOVE);
-            operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
             // /subsystem=ejb3/service=access-log:remove
             address = new ModelNode();
             address.add("subsystem", "ejb3");

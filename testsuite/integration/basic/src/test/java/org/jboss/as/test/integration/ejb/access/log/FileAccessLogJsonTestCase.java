@@ -24,7 +24,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.*;
 
@@ -36,7 +36,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.*;
 @RunWith(Arquillian.class)
 @ServerSetup(FileAccessLogJsonTestCase.EjbAccessLogSetupTask.class)
 public class FileAccessLogJsonTestCase extends AbstractAccessLogTestCase {
-    private static final AccessLogFormat ACCESS_LOG_FORMAT = AccessLogFormat.CUSTOM_JSON;
+    private static final AccessLogFormat ACCESS_LOG_FORMAT = AccessLogFormat.SHORT_JSON;
 
     /* ==============================================
                         PRE-REQUISITE
@@ -118,9 +118,7 @@ public class FileAccessLogJsonTestCase extends AbstractAccessLogTestCase {
 
         @Override
         public void setup(ManagementClient managementClient, String s) throws Exception {
-            System.out.println("\n\nsetup\n\n");
-
-            // /subsystem=ejb3/service=access-log:add
+            // /subsystem=ejb3/service=access-log:add(destination=file,path=ejb-access.log,relative-to=jboss.server.log.dir)
             address = new ModelNode();
             address.add("subsystem", "ejb3");
             address.add("service", "access-log");
@@ -128,38 +126,7 @@ public class FileAccessLogJsonTestCase extends AbstractAccessLogTestCase {
             operation = new ModelNode();
             operation.get(OP).set(ADD);
             operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/json-formatter=j1:add(name=j1,pattern=\"date time\")
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("json-formatter", "p1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(ADD);
-            operation.get(OP_ADDR).set(address);
-            operation.get("name").set("p1");
-            operation.get("pattern").set(ACCESS_LOG_FORMAT.getPattern());
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/file-handler=file1:add(name=file1,path=" + EJB_ACCESS_LOG_FILE + ",relative-to=jboss.server.log.dir,formatter=j1)
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("file-handler", "file1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(ADD);
-            operation.get(OP_ADDR).set(address);
-            operation.get("name").set("file1");
-            operation.get("formatter").set("p1");
+            operation.get("destination").set("file");
             operation.get("path").set(EJB_ACCESS_LOG_FILE);
             operation.get("relative-to").set("jboss.server.log.dir");
             result = managementClient.getControllerClient().execute(operation);
@@ -172,45 +139,15 @@ public class FileAccessLogJsonTestCase extends AbstractAccessLogTestCase {
 
         @Override
         public void tearDown(ManagementClient managementClient, String s) throws Exception {
-            System.out.println("\n\ntearDown\n\n");
-
-            // /subsystem=ejb3/service=access-log/file-handler=file1:remove
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("file-handler", "file1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(REMOVE);
-            operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
-            // /subsystem=ejb3/service=access-log/json-formatter=p1:remove
-            address = new ModelNode();
-            address.add("subsystem", "ejb3");
-            address.add("service", "access-log");
-            address.add("json-formatter", "p1");
-
-            operation = new ModelNode();
-            operation.get(OP).set(REMOVE);
-            operation.get(OP_ADDR).set(address);
-            result = managementClient.getControllerClient().execute(operation);
-            if (!Operations.isSuccessfulOutcome(result)) {
-                throw new Exception("Can't configure server: " + result.asString());
-            }
-
             // /subsystem=ejb3/service=access-log:remove
-            ModelNode address = new ModelNode();
+            address = new ModelNode();
             address.add("subsystem", "ejb3");
             address.add("service", "access-log");
 
-            ModelNode operation = new ModelNode();
+            operation = new ModelNode();
             operation.get(OP).set(REMOVE);
             operation.get(OP_ADDR).set(address);
-            ModelNode result = managementClient.getControllerClient().execute(operation);
+            result = managementClient.getControllerClient().execute(operation);
             if (!Operations.isSuccessfulOutcome(result)) {
                 throw new Exception("Can't configure server: " + result.asString());
             }
