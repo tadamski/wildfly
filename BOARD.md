@@ -352,3 +352,104 @@ Left over from the E2 handler replacement in a prior session. Caught by checksty
 **`RuntimeCapability` service type `AccessLogService.class` vs a generic type.** Using the concrete class keeps the remove handler working with no extra indirection. The type is not exposed via the capability runtime API (no `runtimeAPI` parameter) — it is only used to produce a valid `ServiceName`. Future code that wants to look up the live service should continue to use the `LIVE_SERVICE` static volatile, not the capability registry.
 
 **No RESTART_NONE handler changes needed.** The three setters on `AccessLogService` are straightforward field assignments on the volatile fields that already existed. The handler in `AccessLogResourceDefinition` already called the correct method names; it just could not compile because the methods were absent.
+
+---
+
+## E3 — EjbAccessLogInterceptor: view interceptor and record population
+
+**1. Task ID:** E3
+
+**2. Outcome:** Complete. Interceptor installed at 0x280 on all EJB views. All 7 demonstrations pass against a real server. 86 unit tests green.
+
+**3. Commits:**
+
+```
+8649ba7ec51 Tomasz Adamski <tomasz.adamski@ibm.com> WFLY-6892 E3b: EjbAccessLogInterceptor — view interceptor and record population
+883414a43ee Tomasz Adamski <tomasz.adamski@ibm.com> WFLY-6892 E3a: expose incoming request as private data in DeploymentsAssociationImpl
+```
+
+**4. Files changed:**
+
+| File | Change |
+|------|--------|
+| `ejb3/…/remote/DeploymentsAssociationImpl.java` | +1 line: `putPrivateData(Request.class, incomingInvocation)` — the §5 patch |
+| `ee/…/interceptors/InterceptorOrder.java` | `ACCESS_LOG_INTERCEPTOR = 0x280` added to `View` inner class |
+| `ejb3/…/component/EjbAccessLogInterceptor.java` | **New** — the interceptor |
+| `ejb3/…/component/AccessLogViewConfigurator.java` | **New** — registers interceptor on every EJB business view |
+| `ejb3/…/component/EJBViewDescription.java` | +1 line: `AccessLogViewConfigurator.INSTANCE` |
+| `ejb3/…/component/EJBComponentDescription.java` | +1 line: `addTimeoutViewInterceptor` for timer view |
+| `ejb3/…/subsystem/AccessLogAdd.java` | Reads `attributes` list from model; builds `Set<AttributeVocabulary>` |
+| `ejb3/…/subsystem/AccessLogResourceDefinition.java` | `AttributeVocabulary` enum: 13→20 tokens; `getLiveService()` public accessor |
+| `ejb3/…/subsystem/AccessLogService.java` | `enabledAttributes` field; `getEnabledAttributes()`, `isIncludeLocal()`, `isIncludeNodeName()` |
+| `ee-feature-pack/…/ejb3/main/module.xml` | Added `org.wildfly.event.logger` + `org.jboss.xnio` module deps |
+
+**5. Acceptance:**
+
+`mvn -pl ejb3,ee install -DskipTests` — **BUILD SUCCESS**
+
+`mvn -pl ejb3 test` — **BUILD SUCCESS, 86 tests, 0 failures**
+
+**Seven demonstrations** (server: `destination=console`, `include-node-name=true`):
+
+**1. Remote SLSB — `remoteAddress` populated (§5 patch confirmed working):**
+```json
+{"eventSource":"ejb-access","timestamp":"2026-10-01T14:16:14.239098217+02:00","app":"spike","module":"spike","bean":"SpikeSlsb","beanClass":"spike.SpikeSlsb","view":"spike.SpikeRemote","method":"hello(String)","user":"spikeuser","remoteAddress":"127.0.0.1","remotePort":46496,"localAddress":"127.0.0.1","localPort":8080,"protocol":"http-remoting","invocationType":"REMOTE","outcome":"success","duration":4,"threadName":"default task-2","nodeName":"li-4221e64c-338c-11b2-a85c-acf275c47dbd"}
+```
+
+**2a. Local call, `include-local=false` → no record** (verified: local curl produced zero `ejb-access` lines)
+
+**2b. Local call, `include-local=true` → record, no network fields:**
+```json
+{"eventSource":"ejb-access","timestamp":"2026-10-01T14:17:07.712321511+02:00","app":"spike","module":"spike","bean":"SpikeSlsb","beanClass":"spike.SpikeSlsb","view":"spike.SpikeLocal","method":"hello(String)","outcome":"success","duration":0,"threadName":"default task-3","nodeName":"li-4221e64c-338c-11b2-a85c-acf275c47dbd"}
+```
+`remoteAddress`, `remotePort`, `localAddress`, `localPort`, `protocol`, `invocationType`, `user` all absent — correct for a local in-VM call with anonymous caller.
+
+**3. Authorization denial — `outcome=exception`, `exception=EJBAccessException`:**
+```json
+{"eventSource":"ejb-access","timestamp":"2026-10-01T14:16:14.327682752+02:00","app":"spike","module":"spike","bean":"SpikeSlsb","beanClass":"spike.SpikeSlsb","view":"spike.SpikeRemote","method":"secured()","user":"spikeuser","remoteAddress":"127.0.0.1","remotePort":46496,"localAddress":"127.0.0.1","localPort":8080,"protocol":"http-remoting","invocationType":"REMOTE","outcome":"exception","exception":"jakarta.ejb.EJBAccessException","duration":0,"threadName":"default task-3","nodeName":"li-4221e64c-338c-11b2-a85c-acf275c47dbd"}
+```
+The 0x280 position is what makes this possible — the authorization interceptor at 0x300 throws before any interceptor registered after it ever runs.
+
+**4. Application exception — `outcome=exception`, `exception=EJBException`:**
+```json
+{"eventSource":"ejb-access","timestamp":"2026-10-01T14:16:14.288271792+02:00","app":"spike","module":"spike","bean":"SpikeSlsb","beanClass":"spike.SpikeSlsb","view":"spike.SpikeRemote","method":"boom()","user":"spikeuser","remoteAddress":"127.0.0.1","remotePort":46496,"localAddress":"127.0.0.1","localPort":8080,"protocol":"http-remoting","invocationType":"REMOTE","outcome":"exception","exception":"jakarta.ejb.EJBException","duration":3,"threadName":"default task-3","nodeName":"li-4221e64c-338c-11b2-a85c-acf275c47dbd"}
+```
+
+**5. Timer — bean named, `invocationType=TIMER`, different thread (`EJB default - 2`):**
+```json
+{"eventSource":"ejb-access","timestamp":"2026-10-01T14:20:34.396643414+02:00","app":"spike","module":"spike","bean":"SpikeSlsb","beanClass":"spike.SpikeSlsb","method":"onTimeout(Timer)","invocationType":"TIMER","outcome":"success","duration":1,"threadName":"EJB default - 2","nodeName":"li-4221e64c-338c-11b2-a85c-acf275c47dbd"}
+```
+`view` is absent (no `ComponentView` in timer-view private data — the `Component.class` fallback is used, which provides bean identity but not the view class). `bean` and `beanClass` are correct — the timer is not anonymous.
+
+**6. `@Asynchronous` — exactly one record, on the remote-dispatch thread:**
+```json
+{"eventSource":"ejb-access","timestamp":"2026-10-01T14:16:14.338794296+02:00","app":"spike","module":"spike","bean":"SpikeSlsb","beanClass":"spike.SpikeSlsb","view":"spike.SpikeRemote","method":"fireAsync()","user":"spikeuser","remoteAddress":"127.0.0.1","remotePort":46496,"localAddress":"127.0.0.1","localPort":8080,"protocol":"http-remoting","invocationType":"REMOTE","outcome":"success","duration":2,"threadName":"default task-4","nodeName":"li-4221e64c-338c-11b2-a85c-acf275c47dbd"}
+```
+One record only. The `SPIKE-APP: async body ran on default task-4` log line confirms the body ran on the same thread — for a remote async the body executes inline on the remoting thread (confirmed by B1 capture-point.md §4 Q3).
+
+**7. MDB message delivery — suppressed by design, no deployment needed:**
+
+`MessageDrivenComponentDescription.setupViewInterceptors()` adds `InvocationType.MESSAGE_DELIVERY` at `INVOCATION_TYPE` (0x005) before our interceptor at 0x280. `EjbAccessLogInterceptor.processInvocation()` checks `invocationType == InvocationType.MESSAGE_DELIVERY` and returns immediately. MDB delivery does flow through `EJBViewDescription`'s configurator chain (it uses `MethodInterfaceType.MessageEndpoint`), so the interceptor is installed — but the suppression fires before any field is gathered. No record is emitted.
+
+**Formatting thread:**
+The `timestamp` in every record is captured inside `EventLogger.log()`, which queues the data map. The formatter and writer run on the XNIO I/O worker. The `threadName` field shows `default task-N` or `EJB default - N` — the invocation thread. The JSON is written by a separate worker thread. Formatting did not happen on the invocation thread.
+
+**6. Surprises:**
+
+**`AttributeVocabulary` enum had only 13 entries; config-surface.md §4 lists 20.** The original D4 enum was missing `bean-class`, `remote-port`, `local-port`, `protocol`, `session-id`, `exception`, `thread-name`. Added in E3b. Not a runtime bug (the interceptor would have simply never emitted those fields), but a schema incompleteness.
+
+**`module.xml` was missing `org.wildfly.event.logger` and `org.jboss.xnio`.** Both were in `pom.xml` as compile dependencies (added in E1a) but the Galleon module descriptor was never updated. The service add operation threw `NoClassDefFoundError: EventFormatter` at runtime until this was fixed.
+
+**Timer record appeared on second trigger, not first.** The first `startTimer()` call was during the initial remote-client run when the rebuilt jar had not yet been redeployed to dist. The second trigger produced the record correctly. Not a code defect.
+
+**No surprises from capture-point.md.** All findings reproduced exactly. `remoteAddress` is absent without the E3a patch and present with it. `view` is absent on the timer path (expected — Component fallback used). `invocationType` is null for local sync calls (expected — no `InvocationType` set on that path).
+
+**7. Judgement calls:**
+
+**`getLiveService()` as a public static accessor rather than making `LIVE_SERVICE` public.** The field stays package-private and set directly by `AccessLogService` on start/stop; the public read path goes through the accessor. Keeps the write path contained.
+
+**`AttributeVocabulary` enum membership check by token string rather than `EnumSet` lookup by name.** The model stores tokens as strings (e.g. `"bean-class"`), not Java identifier names (`BEAN_CLASS`). A `getToken().equals(name)` loop in `AccessLogAdd` is the correct translation. An alternative `tokenToEnum` map would be marginally faster but adds ~20 entries of static state for a cold path.
+
+**MDB suppression by `InvocationType` check, not by view type.** Checking `MethodInterfaceType.MessageEndpoint` in the configurator and skipping the registration would also work, but it would make the suppression invisible in the interceptor itself and harder to audit. The check at invocation time is self-documenting.
+
+**Timer `view` field absent rather than using `MethodInterfaceType.Timer` as a synthetic value.** The `ComponentView` is genuinely absent on the timer path; fabricating a string would be misleading. Absence of the key is the correct JSON representation per config-surface.md §4 D5.

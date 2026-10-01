@@ -89,14 +89,21 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         APP("app"),
         MODULE("module"),
         BEAN("bean"),
+        BEAN_CLASS("bean-class"),
         VIEW("view"),
         METHOD("method"),
         USER("user"),
         REMOTE_ADDRESS("remote-address"),
+        REMOTE_PORT("remote-port"),
         LOCAL_ADDRESS("local-address"),
+        LOCAL_PORT("local-port"),
+        PROTOCOL("protocol"),
         INVOCATION_TYPE("invocation-type"),
+        SESSION_ID("session-id"),
         OUTCOME("outcome"),
+        EXCEPTION("exception"),
         DURATION("duration"),
+        THREAD_NAME("thread-name"),
         NODE_NAME("node-name");
 
         private final String token;
@@ -248,6 +255,11 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
      * Singleton resource — one instance per server, so a static volatile is safe.
      */
     static volatile AccessLogService LIVE_SERVICE = null;
+
+    /** Returns the live service, or {@code null} if the access-log resource is not present. */
+    public static AccessLogService getLiveService() {
+        return LIVE_SERVICE;
+    }
 
     private static final AbstractRuntimeOnlyHandler METRIC_HANDLER = new AbstractRuntimeOnlyHandler() {
         @Override

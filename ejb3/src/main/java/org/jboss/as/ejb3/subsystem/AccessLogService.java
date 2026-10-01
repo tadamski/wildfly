@@ -7,6 +7,8 @@ package org.jboss.as.ejb3.subsystem;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -41,6 +43,10 @@ public class AccessLogService implements Service {
     static final String LOG_CATEGORY = "org.jboss.as.ejb3.access-log";
     static final String EVENT_SOURCE = "ejb-access";
 
+    /** All 13 tokens enabled — used when the model attribute is UNDEFINED. */
+    static final Set<AccessLogResourceDefinition.AttributeVocabulary> ALL_ATTRIBUTES =
+            EnumSet.allOf(AccessLogResourceDefinition.AttributeVocabulary.class);
+
     private final Consumer<AccessLogService> serviceConsumer;
     private final Supplier<XnioWorker> worker;
 
@@ -48,6 +54,8 @@ public class AccessLogService implements Service {
     private final String destination;
     private final String path;
     private final String rotateSuffix;
+    /** Enabled log fields; defaults to all 13 tokens when the model attribute is UNDEFINED. */
+    private final Set<AccessLogResourceDefinition.AttributeVocabulary> enabledAttributes;
 
     // Live-mutable configuration (RESTART_NONE attributes)
     private volatile boolean includeLocal;
@@ -70,6 +78,7 @@ public class AccessLogService implements Service {
             final String destination,
             final String path,
             final String rotateSuffix,
+            final Set<AccessLogResourceDefinition.AttributeVocabulary> enabledAttributes,
             final boolean includeLocal,
             final boolean includeNodeName,
             final java.util.Map<String, Object> metadata) {
@@ -77,6 +86,7 @@ public class AccessLogService implements Service {
         this.worker = worker;
         this.destination = destination;
         this.path = path;
+        this.enabledAttributes = enabledAttributes;
         this.includeLocal = includeLocal;
         this.rotateSuffix = rotateSuffix;
         this.includeNodeName = includeNodeName;
@@ -86,12 +96,6 @@ public class AccessLogService implements Service {
     @Override
     public void start(final StartContext context) throws StartException {
         final JsonEventFormatter.Builder formatterBuilder = JsonEventFormatter.builder();
-        if (includeNodeName) {
-            // node-name is injected as formatter meta-data by the interceptor (E3);
-            // the server environment is not available here without an additional
-            // service dependency.  Leave a placeholder — E3 will populate it.
-            // TODO E3: inject ServerEnvironment.getNodeName() via metadata.
-        }
         if (metadata != null && !metadata.isEmpty()) {
             formatterBuilder.addMetaData(metadata);
         }
@@ -135,6 +139,21 @@ public class AccessLogService implements Service {
      */
     public EventLogger getEventLogger() {
         return eventLogger;
+    }
+
+    /** Returns the set of enabled log field tokens. Never null. */
+    public Set<AccessLogResourceDefinition.AttributeVocabulary> getEnabledAttributes() {
+        return enabledAttributes;
+    }
+
+    /** Returns true if local (in-VM) invocations should be logged. */
+    public boolean isIncludeLocal() {
+        return includeLocal;
+    }
+
+    /** Returns true if the node name should be included in every record. */
+    public boolean isIncludeNodeName() {
+        return includeNodeName;
     }
 
     /** Sets include-local flag (live-mutable, RESTART_NONE). */

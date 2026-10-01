@@ -4,8 +4,11 @@
  */
 package org.jboss.as.ejb3.subsystem;
 
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -44,6 +47,25 @@ public class AccessLogAdd extends AbstractAddStepHandler {
         final boolean includeLocal = AccessLogResourceDefinition.INCLUDE_LOCAL.resolveModelAttribute(context, model).asBoolean();
         final boolean includeNodeName = AccessLogResourceDefinition.INCLUDE_NODE_NAME.resolveModelAttribute(context, model).asBoolean();
 
+        // Parse the enabled-attributes list. UNDEFINED → all 13 tokens (default-all).
+        final ModelNode attributesNode = model.get(EJB3SubsystemModel.ATTRIBUTES);
+        final Set<AccessLogResourceDefinition.AttributeVocabulary> enabledAttributes;
+        if (attributesNode.isDefined()) {
+            final List<ModelNode> tokens = attributesNode.asList();
+            enabledAttributes = EnumSet.noneOf(AccessLogResourceDefinition.AttributeVocabulary.class);
+            for (ModelNode token : tokens) {
+                final String name = token.asString();
+                for (AccessLogResourceDefinition.AttributeVocabulary v : AccessLogResourceDefinition.AttributeVocabulary.values()) {
+                    if (v.getToken().equals(name)) {
+                        enabledAttributes.add(v);
+                        break;
+                    }
+                }
+            }
+        } else {
+            enabledAttributes = AccessLogService.ALL_ATTRIBUTES;
+        }
+
         final ModelNode metadataNode = AccessLogResourceDefinition.METADATA.resolveModelAttribute(context, model);
         final Map<String, Object> metadata = new LinkedHashMap<>();
         if (metadataNode.isDefined()) {
@@ -59,7 +81,7 @@ public class AccessLogAdd extends AbstractAddStepHandler {
 
         final AccessLogService service = new AccessLogService(
                 serviceConsumer, workerSupplier,
-                destination, path, rotateSuffix, includeLocal, includeNodeName, metadata);
+                destination, path, rotateSuffix, enabledAttributes, includeLocal, includeNodeName, metadata);
         sb.setInstance(service)
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .install();
