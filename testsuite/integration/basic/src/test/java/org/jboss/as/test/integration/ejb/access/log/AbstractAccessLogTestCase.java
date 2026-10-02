@@ -447,6 +447,6 @@ public abstract class AbstractAccessLogTestCase {
     public void testSLSBLocalServlet() throws Exception {
         String result = doGetRequest("/slsblocal");
         assertEquals("ECHO[TUTTO A POSTO A FERRAGOSTO]", result);
-        checkAccessLog(SLSBRemote.class, SLSB.class, "echo", null);
+        checkAccessLog(SLSBLocal.class, SLSB.class, "echo", null);
     }
 }

@@ -116,6 +116,7 @@ public class ServerLogAccessLogTestCase extends AbstractAccessLogTestCase {
             operation.get(OP).set(ADD);
             operation.get(OP_ADDR).set(address);
             operation.get("destination").set("logging");
+            operation.get("include-local").set(true);
             result = managementClient.getControllerClient().execute(operation);
             if (!Operations.isSuccessfulOutcome(result)) {
                 throw new Exception("Can't configure server: " + result.asString());

@@ -50,20 +50,19 @@ public class FileAccessLogJsonTestCase extends AbstractAccessLogTestCase {
     @RunAsClient
     public void setTmpFileForEjbAccessLogFile() throws IOException {
         Path ejbAccessLogFilePath = getLogFilePath(EJB_ACCESS_LOG_FILE);
-        Assert.assertFalse(String.format("EJB access log file '%s' does already exist!", ejbAccessLogFilePath.toFile().getAbsolutePath()), ejbAccessLogFilePath.toFile().exists());
         writeTmpFile(
                 EJB_ACCESS_LOG_FILE,
                 ejbAccessLogFilePath,
-                ejbAccessLogFilePath.toFile().length() // discard output generated so far
+                ejbAccessLogFilePath.toFile().exists() ? ejbAccessLogFilePath.toFile().length() : 0
         );
     }
 
     @Test
     @InSequence(Integer.MAX_VALUE)
     @RunAsClient
-    public void removeTmpFileAndEjbAccessLogFile() {
-        Assert.assertTrue(getTmpFilePath(EJB_ACCESS_LOG_FILE).toFile().delete());
-        Assert.assertTrue(getLogFilePath(EJB_ACCESS_LOG_FILE).toFile().delete());
+    public void removeTmpFileAndEjbAccessLogFile() throws IOException {
+        java.nio.file.Files.deleteIfExists(getTmpFilePath(EJB_ACCESS_LOG_FILE));
+        java.nio.file.Files.deleteIfExists(getLogFilePath(EJB_ACCESS_LOG_FILE));
     }
 
     // mvn -Dtest=FileAccessLogJsonTestCase clean test
@@ -129,6 +128,7 @@ public class FileAccessLogJsonTestCase extends AbstractAccessLogTestCase {
             operation.get("destination").set("file");
             operation.get("path").set(EJB_ACCESS_LOG_FILE);
             operation.get("relative-to").set("jboss.server.log.dir");
+            operation.get("include-local").set(true);
             result = managementClient.getControllerClient().execute(operation);
             if (!Operations.isSuccessfulOutcome(result)) {
                 throw new Exception("Can't configure server: " + result.asString());

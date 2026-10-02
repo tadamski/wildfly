@@ -31,16 +31,18 @@ public enum AccessLogFormat {
 
     /**
      * JSON format – matches any single-line JSON object produced by {@code JsonEventFormatter}.
+     * The line may carry an optional prefix (e.g. ANSI escape codes prepended by the console
+     * handler, or a log-record header when routed through the logging subsystem).
      * All test cases that expect JSON records use one of these constants.
      */
-    SHORT_JSON("short", Pattern.compile("\\{.*}")),
+    SHORT_JSON("short", Pattern.compile(".*\\{.*}")),
 
-    LONG_JSON("long", Pattern.compile("\\{.*}")),
+    LONG_JSON("long", Pattern.compile(".*\\{.*}")),
 
     CUSTOM_JSON("date time timezone ip user ejb method invocation event host port protocol thread server",
-            Pattern.compile("\\{.*}")),
+            Pattern.compile(".*\\{.*}")),
 
-    DEFAULT_JSON("default", Pattern.compile("\\{.*}"))
+    DEFAULT_JSON("default", Pattern.compile(".*\\{.*}"))
 
     ;
 
