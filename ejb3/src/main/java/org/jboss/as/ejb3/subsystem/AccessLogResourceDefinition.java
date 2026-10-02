@@ -26,6 +26,7 @@ import org.jboss.as.controller.operations.validation.StringAllowedValuesValidato
 import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.controller.registry.Resource;
+import org.jboss.as.ejb3.component.AccessLogHolder;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 import org.jboss.dmr.Property;
@@ -207,7 +208,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
             protected boolean applyUpdateToRuntime(OperationContext context, ModelNode operation,
                     String attributeName, ModelNode resolvedValue, ModelNode currentValue,
                     HandbackHolder<Void> handbackHolder) throws OperationFailedException {
-                final AccessLogService service = LIVE_SERVICE;
+                final AccessLogService service = AccessLogHolder.INSTANCE.get();
                 if (service == null) {
                     return false;
                 }
@@ -250,21 +251,10 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         resourceRegistration.registerMetric(EVENTS_DROPPED, METRIC_HANDLER);
     }
 
-    /**
-     * The live service instance, published by {@link AccessLogService} on start/stop.
-     * Singleton resource — one instance per server, so a static volatile is safe.
-     */
-    static volatile AccessLogService LIVE_SERVICE = null;
-
-    /** Returns the live service, or {@code null} if the access-log resource is not present. */
-    public static AccessLogService getLiveService() {
-        return LIVE_SERVICE;
-    }
-
     private static final AbstractRuntimeOnlyHandler METRIC_HANDLER = new AbstractRuntimeOnlyHandler() {
         @Override
         protected void executeRuntimeStep(OperationContext context, ModelNode operation) throws OperationFailedException {
-            final AccessLogService service = LIVE_SERVICE;
+            final AccessLogService service = AccessLogHolder.INSTANCE.get();
             if (service == null) {
                 return;
             }

@@ -14,6 +14,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.jboss.as.controller.services.path.PathManager;
+import org.jboss.as.ejb3.component.AccessLogHolder;
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.msc.Service;
 import org.jboss.msc.service.StartContext;
@@ -132,13 +133,13 @@ public class AccessLogService implements Service {
         final EventWriter countingWriter = new CountingEventWriter(writer, eventsLogged);
 
         this.eventLogger = EventLogger.createAsyncLogger(EVENT_SOURCE, countingWriter, worker.get());
-        AccessLogResourceDefinition.LIVE_SERVICE = this;
+        AccessLogHolder.INSTANCE.set(this);
         serviceConsumer.accept(this);
     }
 
     @Override
     public void stop(final StopContext context) {
-        AccessLogResourceDefinition.LIVE_SERVICE = null;
+        AccessLogHolder.INSTANCE.clear();
         serviceConsumer.accept(null);
         this.eventLogger = null;
         final EventWriter w = this.activeWriter;

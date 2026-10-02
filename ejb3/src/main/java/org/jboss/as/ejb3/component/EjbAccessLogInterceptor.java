@@ -13,7 +13,6 @@ import java.util.Set;
 
 import org.jboss.as.ee.component.ComponentView;
 import org.jboss.as.ee.component.interceptors.InvocationType;
-import org.jboss.as.ejb3.subsystem.AccessLogResourceDefinition;
 import org.jboss.as.ejb3.subsystem.AccessLogResourceDefinition.AttributeVocabulary;
 import org.jboss.as.ejb3.subsystem.AccessLogService;
 import org.jboss.ejb.client.SessionID;
@@ -34,7 +33,7 @@ import org.wildfly.security.auth.server.SecurityIdentity;
  * {@code EJB_SECURITY_AUTHORIZATION_INTERCEPTOR} (0x300). This position sees the established
  * security identity and captures authorization denials as exception outcomes.
  *
- * <p>At invocation time the interceptor checks {@link AccessLogResourceDefinition#LIVE_SERVICE}.
+ * <p>At invocation time the interceptor checks {@link AccessLogHolder#get()}.
  * If the service is not running (access-log resource not present), the interceptor returns
  * immediately with no overhead beyond one volatile read.
  *
@@ -49,14 +48,17 @@ import org.wildfly.security.auth.server.SecurityIdentity;
  */
 public final class EjbAccessLogInterceptor implements Interceptor {
 
-    public static final InterceptorFactory FACTORY = new ImmediateInterceptorFactory(new EjbAccessLogInterceptor());
+    public static final InterceptorFactory FACTORY = new ImmediateInterceptorFactory(new EjbAccessLogInterceptor(AccessLogHolder.INSTANCE));
 
-    private EjbAccessLogInterceptor() {
+    private final AccessLogHolder holder;
+
+    private EjbAccessLogInterceptor(final AccessLogHolder holder) {
+        this.holder = holder;
     }
 
     @Override
     public Object processInvocation(final InterceptorContext context) throws Exception {
-        final AccessLogService service = AccessLogResourceDefinition.getLiveService();
+        final AccessLogService service = holder.get();
         if (service == null) {
             // Access log not configured — fast path, one volatile read.
             return context.proceed();
