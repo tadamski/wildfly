@@ -86,6 +86,7 @@ import org.jboss.logging.annotations.Signature;
 import org.jboss.metadata.ejb.spec.MethodParametersMetaData;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.StartException;
 
 /**
  * @author <a href="mailto:Flemming.Harms@gmail.com">Flemming Harms</a>
@@ -3255,4 +3256,10 @@ public interface EjbLogger extends BasicLogger {
 
     @Message(id = 536, value = "Unsupported EJB receiver protocol %s")
     IllegalArgumentException unsupportedEJBReceiverProtocol(String uriScheme);
+
+    @Message(id = 537, value = "Attributes 'path', 'relative-to', and 'rotate-suffix' are only allowed when 'destination' is 'file'")
+    OperationFailedException fileAttributesNotAllowedForDestination();
+
+    @Message(id = 538, value = "Access log destination resolved to '%s' but file attributes (path, relative-to, rotate-suffix) were also set; file attributes are ignored for non-file destinations")
+    StartException fileAttributesIgnoredForNonFileDestination(String destination);
 }
