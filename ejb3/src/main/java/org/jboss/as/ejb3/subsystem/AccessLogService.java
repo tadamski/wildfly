@@ -21,7 +21,9 @@ import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
 import org.wildfly.event.logger.EventLogger;
 import org.wildfly.event.logger.EventWriter;
+import org.wildfly.event.logger.FileEventWriter;
 import org.wildfly.event.logger.JsonEventFormatter;
+import org.wildfly.event.logger.LoggerEventWriter;
 import org.wildfly.event.logger.StdoutEventWriter;
 import org.xnio.XnioWorker;
 
