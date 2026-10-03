@@ -30,6 +30,8 @@ import org.jboss.as.ejb3.component.AccessLogHolder;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 import org.jboss.dmr.Property;
+import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.service.ServiceRegistry;
 
 public class AccessLogResourceDefinition extends SimpleResourceDefinition {
 
@@ -208,7 +210,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
             protected boolean applyUpdateToRuntime(OperationContext context, ModelNode operation,
                     String attributeName, ModelNode resolvedValue, ModelNode currentValue,
                     HandbackHolder<Void> handbackHolder) throws OperationFailedException {
-                final AccessLogService service = AccessLogHolder.INSTANCE.get();
+                final AccessLogService service = getLiveService(context.getServiceRegistry(false));
                 if (service == null) {
                     return false;
                 }
@@ -251,10 +253,21 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         resourceRegistration.registerMetric(EVENTS_DROPPED, METRIC_HANDLER);
     }
 
+    private static AccessLogService getLiveService(final ServiceRegistry registry) {
+        @SuppressWarnings("unchecked")
+        final ServiceController<AccessLogHolder> sc =
+                (ServiceController<AccessLogHolder>) registry.getService(AccessLogHolder.ACCESS_LOG_HOLDER_SERVICE_NAME);
+        if (sc == null) {
+            return null;
+        }
+        final AccessLogHolder holder = sc.getValue();
+        return holder == null ? null : holder.get();
+    }
+
     private static final AbstractRuntimeOnlyHandler METRIC_HANDLER = new AbstractRuntimeOnlyHandler() {
         @Override
         protected void executeRuntimeStep(OperationContext context, ModelNode operation) throws OperationFailedException {
-            final AccessLogService service = AccessLogHolder.INSTANCE.get();
+            final AccessLogService service = getLiveService(context.getServiceRegistry(false));
             if (service == null) {
                 return;
             }

@@ -5,37 +5,65 @@
 package org.jboss.as.ejb3.component;
 
 import org.jboss.as.ejb3.subsystem.AccessLogService;
+import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.StartContext;
+import org.jboss.msc.service.StopContext;
 
 /**
- * Stable singleton that bridges the runtime lifecycle of {@link AccessLogService} to the
+ * MSC service that bridges the runtime lifecycle of {@link AccessLogService} to the
  * statically-registered {@link EjbAccessLogInterceptor}.
  *
- * <p>The interceptor is installed at deployment time and cannot take an MSC dependency on the
- * access-log service (which is added and removed at runtime, after deployments start). This
- * holder provides the shared mutable reference: {@link AccessLogService} publishes and clears
- * itself here on {@code start}/{@code stop}, and the interceptor reads {@link #get()} on every
- * invocation — one volatile read, identical cost to the previous static field.
+ * <p>Installed <em>unconditionally</em> at subsystem boot (by {@code EJB3SubsystemAdd}),
+ * so it is always present whether or not the {@code service=access-log} resource has been
+ * added.  Deployments take a normal MSC dependency on it through
+ * {@link #ACCESS_LOG_HOLDER_SERVICE_NAME}; the interceptor reads {@link #get()} on every
+ * invocation — one volatile field read.
  *
- * <p>There is one holder instance per server ({@link #INSTANCE}), matching the cardinality of
- * the {@code service=access-log} resource (at most one per subsystem instance).
+ * <p>{@link AccessLogService#start}/{@link AccessLogService#stop} publish and clear the
+ * service reference inside this holder; the holder service itself never stops.
  */
-public final class AccessLogHolder {
+public final class AccessLogHolder implements org.jboss.msc.service.Service<AccessLogHolder> {
 
-    /** The single server-wide holder instance. */
-    public static final AccessLogHolder INSTANCE = new AccessLogHolder();
+    /**
+     * Well-known service name under which this holder is registered.
+     * Deployment-time MSC dependencies are added against this name.
+     */
+    public static final ServiceName ACCESS_LOG_HOLDER_SERVICE_NAME =
+            ServiceName.JBOSS.append("ejb3", "access-log", "holder");
 
     private volatile AccessLogService service;
 
-    private AccessLogHolder() {
+    public AccessLogHolder() {
     }
+
+    // ---- Service<AccessLogHolder> ----
+
+    @Override
+    public void start(final StartContext context) {
+        // Nothing to do — the holder is ready as soon as it is constructed.
+    }
+
+    @Override
+    public void stop(final StopContext context) {
+        // Nothing to do — the holder is never stopped independently of the server.
+    }
+
+    @Override
+    public AccessLogHolder getValue() {
+        return this;
+    }
+
+    // ---- Accessor used by EjbAccessLogInterceptor (hot path) ----
 
     /**
      * Returns the live {@link AccessLogService}, or {@code null} when the access-log resource
-     * is not present.
+     * is not present.  This is the hot-path read; it is a single volatile field read.
      */
     public AccessLogService get() {
         return service;
     }
+
+    // ---- Mutators called by AccessLogService.start/stop ----
 
     /**
      * Called by {@link AccessLogService#start} to publish the running service.

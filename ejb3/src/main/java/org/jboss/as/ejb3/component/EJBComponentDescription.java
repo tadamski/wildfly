@@ -374,6 +374,7 @@ public abstract class EJBComponentDescription extends ComponentDescription {
                     @Override
                     public void configureDependency(ServiceBuilder<?> serviceBuilder, EJBComponentCreateService service) throws DeploymentUnitProcessingException {
                         serviceBuilder.addDependency(LoggingInterceptor.LOGGING_ENABLED_SERVICE_NAME, AtomicBoolean.class, service.getExceptionLoggingEnabledInjector());
+                        serviceBuilder.addDependency(AccessLogHolder.ACCESS_LOG_HOLDER_SERVICE_NAME, AccessLogHolder.class, service.getAccessLogHolderInjector());
                     }
                 });
             }

@@ -18,6 +18,7 @@ import org.jboss.as.controller.CapabilityServiceBuilder;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.services.path.PathManager;
+import org.jboss.as.ejb3.component.AccessLogHolder;
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
@@ -87,11 +88,12 @@ public class AccessLogAdd extends AbstractAddStepHandler {
         final CapabilityServiceBuilder<?> sb = context.getCapabilityServiceTarget()
                 .addCapability(AccessLogResourceDefinition.ACCESS_LOG_CAPABILITY);
         final Consumer<AccessLogService> serviceConsumer = sb.provides(AccessLogResourceDefinition.ACCESS_LOG_CAPABILITY);
+        final Supplier<AccessLogHolder> holderSupplier = sb.requires(AccessLogHolder.ACCESS_LOG_HOLDER_SERVICE_NAME);
         final Supplier<XnioWorker> workerSupplier = sb.requiresCapability("org.wildfly.io.worker", XnioWorker.class, worker);
         final Supplier<PathManager> pathManagerSupplier = sb.requires(PathManager.SERVICE_DESCRIPTOR);
 
         final AccessLogService service = new AccessLogService(
-                serviceConsumer, workerSupplier, pathManagerSupplier,
+                serviceConsumer, holderSupplier, workerSupplier, pathManagerSupplier,
                 destination, path, relativeTo, rotateSuffix, fileAttrsExplicitlySet,
                 enabledAttributes, includeLocal, includeNodeName, metadata);
         sb.setInstance(service)

@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.jboss.as.ee.component.Component;
 import org.jboss.as.ee.component.ComponentView;
 import org.jboss.as.ee.component.interceptors.InvocationType;
 import org.jboss.as.ejb3.subsystem.AccessLogResourceDefinition.AttributeVocabulary;
@@ -33,9 +34,9 @@ import org.wildfly.security.auth.server.SecurityIdentity;
  * {@code EJB_SECURITY_AUTHORIZATION_INTERCEPTOR} (0x300). This position sees the established
  * security identity and captures authorization denials as exception outcomes.
  *
- * <p>At invocation time the interceptor checks {@link AccessLogHolder#get()}.
- * If the service is not running (access-log resource not present), the interceptor returns
- * immediately with no overhead beyond one volatile read.
+ * <p>At invocation time the interceptor reads the {@link AccessLogHolder} injected into the
+ * {@link EJBComponent}.  If the service is not running (access-log resource not present),
+ * the interceptor returns immediately with no overhead beyond one volatile read.
  *
  * <p>Local (in-VM) invocations are suppressed when {@code include-local=false} (the default).
  *
@@ -48,17 +49,15 @@ import org.wildfly.security.auth.server.SecurityIdentity;
  */
 public final class EjbAccessLogInterceptor implements Interceptor {
 
-    public static final InterceptorFactory FACTORY = new ImmediateInterceptorFactory(new EjbAccessLogInterceptor(AccessLogHolder.INSTANCE));
+    public static final InterceptorFactory FACTORY = new ImmediateInterceptorFactory(new EjbAccessLogInterceptor());
 
-    private final AccessLogHolder holder;
-
-    private EjbAccessLogInterceptor(final AccessLogHolder holder) {
-        this.holder = holder;
+    private EjbAccessLogInterceptor() {
     }
 
     @Override
     public Object processInvocation(final InterceptorContext context) throws Exception {
-        final AccessLogService service = holder.get();
+        final EJBComponent ejbComponent = (EJBComponent) context.getPrivateData(Component.class);
+        final AccessLogService service = ejbComponent.getAccessLogHolder().get();
         if (service == null) {
             // Access log not configured — fast path, one volatile read.
             return context.proceed();
@@ -94,7 +93,7 @@ public final class EjbAccessLogInterceptor implements Interceptor {
         } finally {
             final long durationMillis = (System.nanoTime() - startNanos) / 1_000_000L;
             try {
-                emit(context, service, logger, request, invocationType,
+                emit(context, ejbComponent, service, logger, request, invocationType,
                         outcomeValue, exceptionClass, durationMillis);
             } catch (final Throwable ignored) {
                 // Never let logging failures affect the invocation.
@@ -104,6 +103,7 @@ public final class EjbAccessLogInterceptor implements Interceptor {
 
     private static void emit(
             final InterceptorContext context,
+            final EJBComponent ejbComponent,
             final AccessLogService service,
             final EventLogger logger,
             final Request request,
@@ -119,20 +119,7 @@ public final class EjbAccessLogInterceptor implements Interceptor {
         // --- Bean / view identity ---
         // ComponentView is present on business-view invocations; absent on timeout (timer) views.
         final ComponentView componentView = context.getPrivateData(ComponentView.class);
-        EJBComponent ejb = null;
-        if (componentView != null) {
-            final org.jboss.as.ee.component.Component component = componentView.getComponent();
-            if (component instanceof EJBComponent) {
-                ejb = (EJBComponent) component;
-            }
-        } else {
-            // Timer / timeout view: fall back to Component.class private data.
-            final org.jboss.as.ee.component.Component component =
-                    context.getPrivateData(org.jboss.as.ee.component.Component.class);
-            if (component instanceof EJBComponent) {
-                ejb = (EJBComponent) component;
-            }
-        }
+        EJBComponent ejb = ejbComponent;
 
         if (ejb != null) {
             if (enabled.contains(AttributeVocabulary.APP)) {

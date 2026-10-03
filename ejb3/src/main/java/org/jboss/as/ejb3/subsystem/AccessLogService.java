@@ -53,6 +53,7 @@ public class AccessLogService implements Service {
             EnumSet.allOf(AccessLogResourceDefinition.AttributeVocabulary.class);
 
     private final Consumer<AccessLogService> serviceConsumer;
+    private final Supplier<AccessLogHolder> holderSupplier;
     private final Supplier<XnioWorker> worker;
     private final Supplier<PathManager> pathManager;
 
@@ -88,6 +89,7 @@ public class AccessLogService implements Service {
 
     AccessLogService(
             final Consumer<AccessLogService> serviceConsumer,
+            final Supplier<AccessLogHolder> holderSupplier,
             final Supplier<XnioWorker> worker,
             final Supplier<PathManager> pathManager,
             final String destination,
@@ -100,6 +102,7 @@ public class AccessLogService implements Service {
             final boolean includeNodeName,
             final java.util.Map<String, Object> metadata) {
         this.serviceConsumer = serviceConsumer;
+        this.holderSupplier = holderSupplier;
         this.worker = worker;
         this.pathManager = pathManager;
         this.destination = destination;
@@ -133,13 +136,13 @@ public class AccessLogService implements Service {
         final EventWriter countingWriter = new CountingEventWriter(writer, eventsLogged);
 
         this.eventLogger = EventLogger.createAsyncLogger(EVENT_SOURCE, countingWriter, worker.get());
-        AccessLogHolder.INSTANCE.set(this);
+        holderSupplier.get().set(this);
         serviceConsumer.accept(this);
     }
 
     @Override
     public void stop(final StopContext context) {
-        AccessLogHolder.INSTANCE.clear();
+        holderSupplier.get().clear();
         serviceConsumer.accept(null);
         this.eventLogger = null;
         final EventWriter w = this.activeWriter;
