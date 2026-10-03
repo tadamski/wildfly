@@ -612,14 +612,11 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     /**
-     * R3/1 — write-attribute(destination) must succeed and update the model.
+     * R3/1 — write-attribute(destination) updates the model correctly.
      *
-     * <p>This exercises the {@code RESTART_RESOURCE_SERVICES} handler path
-     * (the hand-rolled remove-then-re-add inside
-     * {@code AccessLogResourceDefinition.restartServiceHandler}).  In MANAGEMENT
-     * mode the runtime step is skipped, but the operation must succeed and the
-     * model must reflect the new value.  A prior regression would have thrown at
-     * the model-validation stage or returned {@code failed}.
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>  {@code requiresRuntime()} is
+     * {@code false}; {@code applyUpdateToRuntime} is never called.  This test covers
+     * model validation and read-back only.
      */
     @Test
     public void testAccessLogRestartServicesWriteDestination() throws Exception {
@@ -653,10 +650,10 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     /**
-     * R3/2 — write-attribute(path) and write-attribute(worker) must succeed and update the model.
+     * R3/2 — write-attribute(path) and write-attribute(worker) update the model correctly.
      *
-     * <p>Exercises two more {@code RESTART_RESOURCE_SERVICES} attributes to confirm the handler
-     * is registered for the full set, not just destination.
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>  Covers model validation and
+     * persistence for two more RESTART_RESOURCE_SERVICES attributes; runtime step skipped.
      */
     @Test
     public void testAccessLogRestartServicesWritePathAndWorker() throws Exception {
@@ -680,7 +677,9 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     /**
-     * R3/3 — write-attribute(rotate-suffix) must succeed and update the model.
+     * R3/3 — write-attribute(rotate-suffix) updates the model correctly.
+     *
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>  Runtime step skipped.
      */
     @Test
     public void testAccessLogRestartServicesWriteRotateSuffix() throws Exception {
@@ -696,12 +695,10 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     /**
-     * R3/4 — Repeated write-attribute calls must all succeed without
-     * {@code DuplicateServiceException} or {@code reload-required}.
+     * R3/4 — Repeated write-attribute(destination) calls succeed without reload-required.
      *
-     * <p>In MANAGEMENT mode the runtime side is a no-op, so this tests the model
-     * and handler invocation path under rapid successive writes — the scenario
-     * that would surface a race on a real server.
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>  Runtime step skipped.
+     * Verifies the model layer does not emit reload-required on any destination value.
      */
     @Test
     public void testAccessLogRestartServicesRepeatedWrites() throws Exception {
@@ -721,7 +718,9 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     /**
-     * R3/5 — Batch write changing two RESTART_RESOURCE_SERVICES attributes at once must succeed.
+     * R3/5 — Composite write changing two RESTART_RESOURCE_SERVICES attributes at once succeeds.
+     *
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>  Runtime step skipped.
      */
     @Test
     public void testAccessLogRestartServicesBatchWrite() throws Exception {
@@ -743,17 +742,14 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     /**
-     * R3/6 — {@code :remove} must succeed without {@code reload-required}.
+     * R3/6 — {@code :remove} succeeds without {@code reload-required} at the model layer.
      *
-     * <p>In MANAGEMENT (ADMIN_ONLY) mode the runtime step is not executed, so the test
-     * cannot prove the service is physically removed.  What it does prove is that
-     * {@link AccessLogResourceDefinition.RemoveHandler} does not emit {@code reload-required}
-     * at the model stage — i.e. no model-level rejection.  The runtime guarantee
-     * (unconditional {@code removeService} instead of the
-     * {@link org.jboss.as.controller.ServiceRemoveStepHandler} default that gates on
-     * {@code isResourceServiceRestartAllowed()}) is enforced by the code path itself and is
-     * verified by code review; a full runtime test would require a mock XNIO worker and
-     * PathManager.
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>  {@code RemoveHandler.performRuntime}
+     * is never called here; this confirms the operation is not rejected at the model stage.
+     * Runtime proof (that {@code performRuntime} calls {@code removeService} rather than
+     * {@code reloadRequired}) is in
+     * {@code AccessLogRemoveNoReloadTestCase.testRemoveNoReloadRequired} in the integration
+     * test suite.
      */
     @Test
     public void testAccessLogRemoveNoReloadRequired() throws Exception {
@@ -768,8 +764,10 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     /**
-     * R3/7 — {@code :remove} followed by {@code :add} (the re-enable sequence) must succeed
-     * without any reload.  This mirrors the §5 CLI sequence described in config-surface.md.
+     * R3/7 — {@code :remove} followed by {@code :add} succeeds without reload at model layer.
+     *
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>  Runtime step skipped; see
+     * {@code AccessLogRemoveNoReloadTestCase} for the end-to-end runtime equivalent.
      */
     @Test
     public void testAccessLogRemoveThenAddNoReload() throws Exception {
@@ -793,6 +791,76 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
         assertEquals("model should show logging after re-add", "logging",
                 ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "destination").asString());
     }
+
+    // -------------------------------------------------------------------------
+    // R4/P2 — rotate-suffix="" model tests (D23: empty string means no rotation)
+    // Model-only (ADMIN_ONLY mode) — validator fix is what is under test.
+    // -------------------------------------------------------------------------
+
+    /**
+     * R4/P2a — write-attribute(rotate-suffix="") is accepted after the validator fix.
+     *
+     * <p>Before the fix, the default STRING validator rejected empty values with
+     * "minimum length of 1 characters".  D23 records empty string as meaning no rotation.
+     *
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>
+     */
+    @Test
+    public void testRotateSuffixEmptyAccepted() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final ModelNode write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "rotate-suffix", new ModelNode(""));
+        final ModelNode result = ks.executeOperation(write);
+        assertEquals("rotate-suffix=\"\" should be accepted: " + result,
+                "success", result.get("outcome").asString());
+        assertEquals("model should persist empty rotate-suffix", "",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "rotate-suffix").asString());
+    }
+
+    /**
+     * R4/P2b — :add(rotate-suffix="") is accepted and the empty value round-trips.
+     *
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>
+     */
+    @Test
+    public void testRotateSuffixEmptyOnAdd() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        ks.executeOperation(Util.createRemoveOperation(ACCESS_LOG_ADDR));
+
+        final ModelNode addOp = Util.createAddOperation(ACCESS_LOG_ADDR);
+        addOp.get("rotate-suffix").set("");
+        final ModelNode result = ks.executeOperation(addOp);
+        assertEquals(":add(rotate-suffix=\"\") should succeed: " + result,
+                "success", result.get("outcome").asString());
+        assertEquals("model should persist empty rotate-suffix after :add", "",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "rotate-suffix").asString());
+    }
+
+    /**
+     * R4/P2c — rotate-suffix="" round-trips through XML parse and persist.
+     *
+     * <p>Uses {@code standardSubsystemTest} which parses the XML, marshals it back, and
+     * re-parses the marshalled form.  Proves that an empty rotate-suffix survives the
+     * XML round-trip without being dropped or defaulted.
+     *
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>
+     */
+    @Test
+    public void testRotateSuffixEmptyXmlRoundTrip() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-no-rotation.xml")).build();
+        assertTrue("boot failed: " + ks.getBootError(), ks.isSuccessfulBoot());
+
+        assertEquals("rotate-suffix should be empty after XML parse", "",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "rotate-suffix").asString());
+    }
+
+    // -------------------------------------------------------------------------
 
     /**
      * Returns {@code true} when the operation response contains a

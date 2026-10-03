@@ -23,6 +23,7 @@ import org.jboss.as.controller.StringListAttributeDefinition;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.operations.validation.EnumValidator;
 import org.jboss.as.controller.operations.validation.StringAllowedValuesValidator;
+import org.jboss.as.controller.operations.validation.StringLengthValidator;
 import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.controller.registry.Resource;
@@ -64,7 +65,10 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
             new SimpleAttributeDefinitionBuilder(EJB3SubsystemModel.ROTATE_SUFFIX, ModelType.STRING, true)
                     .setAllowExpression(true)
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
-                    .setDefaultValue(new ModelNode(".yyyy-MM-dd")) // "" = no rotation
+                    .setDefaultValue(new ModelNode(".yyyy-MM-dd"))
+                    // min=0: empty string is valid and means "no rotation" (D23).
+                    // The default STRING validator enforces min=1; override it.
+                    .setValidator(new StringLengthValidator(0, true, true))
                     .build();
 
     static final SimpleAttributeDefinition WORKER =
