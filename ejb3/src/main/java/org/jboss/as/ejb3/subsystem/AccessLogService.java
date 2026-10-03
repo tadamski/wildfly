@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -84,6 +85,13 @@ public class AccessLogService implements Service {
     private final AtomicLong eventsLogged = new AtomicLong();
     private final AtomicLong eventsDropped = new AtomicLong();
 
+    /**
+     * Guards the log-once behaviour for emit failures: set to {@code true} after the first
+     * failure has been logged at ERROR; subsequent failures are demoted to DEBUG.
+     * Reset to {@code false} on service start so that a restart surfaces a fresh ERROR.
+     */
+    private final AtomicBoolean emitFailureLogged = new AtomicBoolean();
+
     // The writer to close on stop
     private EventWriter activeWriter;
 
@@ -136,6 +144,7 @@ public class AccessLogService implements Service {
         final EventWriter countingWriter = new CountingEventWriter(writer, eventsLogged);
 
         this.eventLogger = EventLogger.createAsyncLogger(EVENT_SOURCE, countingWriter, worker.get());
+        emitFailureLogged.set(false);
         holderSupplier.get().set(this);
         serviceConsumer.accept(this);
     }
@@ -200,11 +209,45 @@ public class AccessLogService implements Service {
     }
 
     /**
-     * Running total of events dropped due to queue overflow.
-     * Reads zero until D20 (AsyncEventLogger queue bound) lands in wildfly-core.
+     * Running total of dropped events, reported as the sum of two independent sources:
+     * <ol>
+     *   <li><em>Emit failures</em> — invocations where the {@code emit()} call in
+     *       {@link org.jboss.as.ejb3.component.EjbAccessLogInterceptor} threw an unexpected
+     *       exception. Each such failure increments this counter by one.</li>
+     *   <li><em>Queue overflow</em> — events that the underlying {@link EventLogger}
+     *       could not enqueue because the async queue was full or already closed, as
+     *       reported by {@link EventLogger#getDroppedCount()}.</li>
+     * </ol>
+     * Both sources represent the same administrative fact: the access log is incomplete
+     * and an audit trail may be lossy.
      */
     public long getEventsDropped() {
-        return eventsDropped.get();
+        final EventLogger el = eventLogger;
+        return eventsDropped.get() + (el != null ? el.getDroppedCount() : 0L);
+    }
+
+    /**
+     * Records one emit failure: increments the dropped-events counter and handles
+     * the log-once behaviour.  The first failure is logged at ERROR (with the full
+     * stack trace); every subsequent failure is logged at DEBUG so that a persistently
+     * broken emit does not flood the server log.
+     *
+     * <p>The logging calls are themselves guarded against further exceptions so that
+     * an error in the logging path cannot re-introduce the problem one level up.
+     *
+     * @param cause the throwable thrown by the emit call
+     */
+    public void recordEmitFailure(final Throwable cause) {
+        eventsDropped.incrementAndGet();
+        try {
+            if (emitFailureLogged.compareAndSet(false, true)) {
+                EjbLogger.ROOT_LOGGER.accessLogEmitFailed(cause);
+            } else {
+                EjbLogger.ROOT_LOGGER.debug("EJB access-log emit failed (suppressed; see earlier ERROR for stack trace)", cause);
+            }
+        } catch (final Throwable ignored) {
+            // Guard: never let the logging path itself propagate.
+        }
     }
 
     // -------------------------------------------------------------------------

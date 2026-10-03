@@ -95,8 +95,9 @@ public final class EjbAccessLogInterceptor implements Interceptor {
             try {
                 emit(context, ejbComponent, service, logger, request, invocationType,
                         outcomeValue, exceptionClass, durationMillis);
-            } catch (final Throwable ignored) {
-                // Never let logging failures affect the invocation.
+            } catch (final Throwable t) {
+                // Never let logging failures affect the invocation, but count and report the failure.
+                service.recordEmitFailure(t);
             }
         }
     }

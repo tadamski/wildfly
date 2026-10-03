@@ -3262,4 +3262,15 @@ public interface EjbLogger extends BasicLogger {
 
     @Message(id = 538, value = "Access log destination resolved to '%s' but file attributes (path, relative-to, rotate-suffix) were also set; file attributes are ignored for non-file destinations")
     StartException fileAttributesIgnoredForNonFileDestination(String destination);
+
+    /**
+     * Logs an error message the first time an EJB access-log emit call throws an unexpected exception.
+     * Subsequent failures are demoted to DEBUG by the caller; only the first occurrence is logged at ERROR
+     * so that a broken emit does not flood the server log with one line per EJB invocation.
+     *
+     * @param cause the throwable thrown by the emit call
+     */
+    @LogMessage(level = ERROR)
+    @Message(id = 539, value = "EJB access-log emit failed; the event has been counted as dropped. Further failures will be logged at DEBUG.")
+    void accessLogEmitFailed(@Cause Throwable cause);
 }
