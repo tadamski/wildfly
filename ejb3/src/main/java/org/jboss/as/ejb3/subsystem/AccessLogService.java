@@ -38,11 +38,12 @@ import org.xnio.XnioWorker;
  * async {@link EventLogger} backed by the XNIO {@code worker}, and publishes the logger
  * for the interceptor (E3) to read.
  *
- * <p>On {@link #stop}: nulls the published logger and closes the writer cleanly.
+ * <p>On {@link #stop}: nulls the published logger, drains whatever the async logger still
+ * holds, and closes the writer cleanly — in that order, so that queued events are written
+ * before the writer underneath them goes away.
  *
  * <p>{@link #getEventsLogged()} and {@link #getEventsDropped()} expose the runtime
- * metrics registered in {@link AccessLogResourceDefinition}.  {@code events-dropped}
- * reads zero until D20 (AsyncEventLogger queue bound) lands in wildfly-core.
+ * metrics registered in {@link AccessLogResourceDefinition}.
  */
 public class AccessLogService implements Service {
 
@@ -153,7 +154,22 @@ public class AccessLogService implements Service {
     public void stop(final StopContext context) {
         holderSupplier.get().clear();
         serviceConsumer.accept(null);
+        final EventLogger el = this.eventLogger;
         this.eventLogger = null;
+        if (el != null) {
+            try {
+                // Drains the async queue on this thread. Must run before the writer is
+                // closed, otherwise the events it drains have nowhere to go.
+                el.close();
+            } catch (Exception ignored) {
+                // best effort
+            }
+            // Read the drop count only after close(), so that events rejected during the
+            // drain are included, and fold it into the local counter: once the logger
+            // reference is gone getEventsDropped() can no longer reach it, and the metric
+            // must not fall back.
+            eventsDropped.addAndGet(el.getDroppedCount());
+        }
         final EventWriter w = this.activeWriter;
         this.activeWriter = null;
         if (w != null) {
@@ -171,6 +187,17 @@ public class AccessLogService implements Service {
      */
     public EventLogger getEventLogger() {
         return eventLogger;
+    }
+
+    /**
+     * Installs the live {@link EventLogger} without going through {@link #start}.
+     *
+     * <p>Package-private seam for {@code AccessLogServiceTest}: constructing the real
+     * logger in {@link #start} needs an {@link XnioWorker}, which a unit test has no way
+     * to supply usefully. Production code never calls this.
+     */
+    void setEventLogger(final EventLogger eventLogger) {
+        this.eventLogger = eventLogger;
     }
 
     /** Returns the set of enabled log field tokens. Never null. */
@@ -220,6 +247,9 @@ public class AccessLogService implements Service {
      * </ol>
      * Both sources represent the same administrative fact: the access log is incomplete
      * and an audit trail may be lossy.
+     *
+     * <p>The value is monotonic across a {@link #stop}: the logger's own count is folded
+     * into the local counter before the reference is dropped.
      */
     public long getEventsDropped() {
         final EventLogger el = eventLogger;
