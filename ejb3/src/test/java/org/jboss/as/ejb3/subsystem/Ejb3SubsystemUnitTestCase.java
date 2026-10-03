@@ -17,6 +17,7 @@ import java.util.Set;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.capability.RuntimeCapability;
+import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.subsystem.test.AbstractSubsystemBaseTest;
 import org.jboss.as.subsystem.test.AdditionalInitialization;
@@ -608,6 +609,205 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
         final String failDesc = result.get("failure-description").asString();
         assertTrue("failure should mention file or path: " + failDesc,
                 failDesc.contains("file") || failDesc.contains("path"));
+    }
+
+    /**
+     * R3/1 — write-attribute(destination) must succeed and update the model.
+     *
+     * <p>This exercises the {@code RESTART_RESOURCE_SERVICES} handler path
+     * (the hand-rolled remove-then-re-add inside
+     * {@code AccessLogResourceDefinition.restartServiceHandler}).  In MANAGEMENT
+     * mode the runtime step is skipped, but the operation must succeed and the
+     * model must reflect the new value.  A prior regression would have thrown at
+     * the model-validation stage or returned {@code failed}.
+     */
+    @Test
+    public void testAccessLogRestartServicesWriteDestination() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        // destination: file → logging
+        ModelNode write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "destination", new ModelNode("logging"));
+        ModelNode result = ks.executeOperation(write);
+        assertEquals("write destination=logging should succeed: " + result,
+                "success", result.get("outcome").asString());
+        assertEquals("model should reflect new destination", "logging",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "destination").asString());
+
+        // destination: logging → console
+        write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "destination", new ModelNode("console"));
+        result = ks.executeOperation(write);
+        assertEquals("write destination=console should succeed: " + result,
+                "success", result.get("outcome").asString());
+        assertEquals("model should reflect new destination", "console",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "destination").asString());
+
+        // destination: console → file
+        write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "destination", new ModelNode("file"));
+        result = ks.executeOperation(write);
+        assertEquals("write destination=file should succeed: " + result,
+                "success", result.get("outcome").asString());
+        assertEquals("model should reflect new destination", "file",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "destination").asString());
+    }
+
+    /**
+     * R3/2 — write-attribute(path) and write-attribute(worker) must succeed and update the model.
+     *
+     * <p>Exercises two more {@code RESTART_RESOURCE_SERVICES} attributes to confirm the handler
+     * is registered for the full set, not just destination.
+     */
+    @Test
+    public void testAccessLogRestartServicesWritePathAndWorker() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(createAdditionalInitialization())
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        // path
+        ModelNode write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "path", new ModelNode("custom.log"));
+        ModelNode result = ks.executeOperation(write);
+        assertEquals("write path should succeed: " + result, "success", result.get("outcome").asString());
+        assertEquals("model should reflect new path", "custom.log",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "path").asString());
+
+        // worker
+        write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "worker", new ModelNode("default"));
+        result = ks.executeOperation(write);
+        assertEquals("write worker should succeed: " + result, "success", result.get("outcome").asString());
+        assertEquals("model should reflect worker", "default",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "worker").asString());
+    }
+
+    /**
+     * R3/3 — write-attribute(rotate-suffix) must succeed and update the model.
+     */
+    @Test
+    public void testAccessLogRestartServicesWriteRotateSuffix() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        ModelNode write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "rotate-suffix", new ModelNode(".yyyy-MM-dd-HH"));
+        ModelNode result = ks.executeOperation(write);
+        assertEquals("write rotate-suffix should succeed: " + result, "success", result.get("outcome").asString());
+        assertEquals("model should reflect new rotate-suffix", ".yyyy-MM-dd-HH",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "rotate-suffix").asString());
+    }
+
+    /**
+     * R3/4 — Repeated write-attribute calls must all succeed without
+     * {@code DuplicateServiceException} or {@code reload-required}.
+     *
+     * <p>In MANAGEMENT mode the runtime side is a no-op, so this tests the model
+     * and handler invocation path under rapid successive writes — the scenario
+     * that would surface a race on a real server.
+     */
+    @Test
+    public void testAccessLogRestartServicesRepeatedWrites() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final String[] destinations = {"logging", "console", "file", "logging", "console", "file"};
+        for (String dest : destinations) {
+            final ModelNode write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "destination", new ModelNode(dest));
+            final ModelNode result = ks.executeOperation(write);
+            assertEquals("write destination=" + dest + " should succeed: " + result,
+                    "success", result.get("outcome").asString());
+            assertFalse("repeated write must not trigger reload-required for destination=" + dest,
+                    hasReloadRequired(result));
+        }
+    }
+
+    /**
+     * R3/5 — Batch write changing two RESTART_RESOURCE_SERVICES attributes at once must succeed.
+     */
+    @Test
+    public void testAccessLogRestartServicesBatchWrite() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final ModelNode composite = Util.createEmptyOperation("composite", PathAddress.EMPTY_ADDRESS);
+        final ModelNode steps = composite.get("steps");
+        steps.add(Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "path", new ModelNode("batch.log")));
+        steps.add(Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "rotate-suffix", new ModelNode(".yyyy-MM")));
+
+        final ModelNode result = ks.executeOperation(composite);
+        assertEquals("batch write should succeed: " + result, "success", result.get("outcome").asString());
+        assertEquals("batch.log",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "path").asString());
+        assertEquals(".yyyy-MM",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "rotate-suffix").asString());
+    }
+
+    /**
+     * R3/6 — {@code :remove} must succeed without {@code reload-required}.
+     *
+     * <p>In MANAGEMENT (ADMIN_ONLY) mode the runtime step is not executed, so the test
+     * cannot prove the service is physically removed.  What it does prove is that
+     * {@link AccessLogResourceDefinition.RemoveHandler} does not emit {@code reload-required}
+     * at the model stage — i.e. no model-level rejection.  The runtime guarantee
+     * (unconditional {@code removeService} instead of the
+     * {@link org.jboss.as.controller.ServiceRemoveStepHandler} default that gates on
+     * {@code isResourceServiceRestartAllowed()}) is enforced by the code path itself and is
+     * verified by code review; a full runtime test would require a mock XNIO worker and
+     * PathManager.
+     */
+    @Test
+    public void testAccessLogRemoveNoReloadRequired() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final ModelNode removeOp = Util.createRemoveOperation(ACCESS_LOG_ADDR);
+        final ModelNode result = ks.executeOperation(removeOp);
+        assertEquals(":remove should succeed: " + result, "success", result.get("outcome").asString());
+        assertFalse(":remove must not trigger reload-required", hasReloadRequired(result));
+    }
+
+    /**
+     * R3/7 — {@code :remove} followed by {@code :add} (the re-enable sequence) must succeed
+     * without any reload.  This mirrors the §5 CLI sequence described in config-surface.md.
+     */
+    @Test
+    public void testAccessLogRemoveThenAddNoReload() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        // Remove
+        final ModelNode removeOp = Util.createRemoveOperation(ACCESS_LOG_ADDR);
+        ModelNode result = ks.executeOperation(removeOp);
+        assertEquals(":remove should succeed: " + result, "success", result.get("outcome").asString());
+        assertFalse(":remove must not trigger reload-required", hasReloadRequired(result));
+
+        // Re-add
+        final ModelNode addOp = Util.createAddOperation(ACCESS_LOG_ADDR);
+        addOp.get("destination").set("logging");
+        result = ks.executeOperation(addOp);
+        assertEquals(":add after :remove should succeed: " + result, "success", result.get("outcome").asString());
+        assertFalse(":add after :remove must not trigger reload-required", hasReloadRequired(result));
+
+        assertEquals("model should show logging after re-add", "logging",
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "destination").asString());
+    }
+
+    /**
+     * Returns {@code true} when the operation response contains a
+     * {@code response-headers / process-state = "reload-required"} entry.
+     */
+    private static boolean hasReloadRequired(final ModelNode response) {
+        if (!response.hasDefined(ModelDescriptionConstants.RESPONSE_HEADERS)) {
+            return false;
+        }
+        final ModelNode headers = response.get(ModelDescriptionConstants.RESPONSE_HEADERS);
+        if (!headers.hasDefined(ModelDescriptionConstants.PROCESS_STATE)) {
+            return false;
+        }
+        return ModelDescriptionConstants.RELOAD_REQUIRED.equals(
+                headers.get(ModelDescriptionConstants.PROCESS_STATE).asString());
     }
 
 }

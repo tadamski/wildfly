@@ -9,13 +9,13 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.jboss.as.controller.AbstractRemoveStepHandler;
 import org.jboss.as.controller.AbstractRuntimeOnlyHandler;
 import org.jboss.as.controller.AbstractWriteAttributeHandler;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PropertiesAttributeDefinition;
-import org.jboss.as.controller.ServiceRemoveStepHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
@@ -158,10 +158,39 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
 
     private static final AccessLogAdd ADD_HANDLER = new AccessLogAdd(ALL_CONFIG_ATTRIBUTES);
 
+    /**
+     * Remove handler for the access-log resource.
+     *
+     * <p>The access-log service is a <em>leaf</em>: nothing in the server depends on it at
+     * runtime.  Deployments depend on {@link org.jboss.as.ejb3.component.AccessLogHolder}'s
+     * service (installed unconditionally at subsystem boot, never removed), not on this service.
+     * {@link org.jboss.as.controller.ServiceRemoveStepHandler}'s default behaviour gates removal
+     * on {@link OperationContext#isResourceServiceRestartAllowed()}, reporting
+     * {@code reload-required} when the header is absent — which is overly conservative for a
+     * leaf.  This handler removes unconditionally, matching the approach used by
+     * {@code ConsoleAccessLogDefinition.RemoveHandler} in Undertow.
+     */
+    private static final class RemoveHandler extends AbstractRemoveStepHandler {
+
+        static final RemoveHandler INSTANCE = new RemoveHandler();
+
+        @Override
+        protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model)
+                throws OperationFailedException {
+            context.removeService(ACCESS_LOG_CAPABILITY.getCapabilityServiceName());
+        }
+
+        @Override
+        protected void recoverServices(OperationContext context, ModelNode operation, ModelNode model)
+                throws OperationFailedException {
+            ADD_HANDLER.performRuntime(context, operation, model);
+        }
+    }
+
     AccessLogResourceDefinition() {
         super(new Parameters(EJB3SubsystemModel.ACCESS_LOG_PATH, EJB3Extension.getResourceDescriptionResolver(EJB3SubsystemModel.SERVICE + "." + EJB3SubsystemModel.ACCESS_LOG))
                 .setAddHandler(ADD_HANDLER)
-                .setRemoveHandler(new ServiceRemoveStepHandler(ACCESS_LOG_CAPABILITY.getCapabilityServiceName(), ADD_HANDLER))
+                .setRemoveHandler(RemoveHandler.INSTANCE)
                 .addCapabilities(ACCESS_LOG_CAPABILITY));
     }
 
