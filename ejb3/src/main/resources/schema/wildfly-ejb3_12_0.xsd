@@ -669,6 +669,10 @@
         <xs:union memberTypes="xs:boolean expressionType"/>
     </xs:simpleType>
 
+    <xs:simpleType name="positiveIntegerOrExpressionType">
+        <xs:union memberTypes="xs:positiveInteger expressionType"/>
+    </xs:simpleType>
+
     <xs:complexType name="accessLogType">
         <xs:annotation>
             <xs:documentation>
@@ -686,6 +690,7 @@
         <xs:attribute name="include-local" type="booleanOrExpressionType" default="false"/>
         <xs:attribute name="include-node-name" type="booleanOrExpressionType" default="true"/>
         <xs:attribute name="attributes" type="stringListType"/>
+        <xs:attribute name="queue-length" type="positiveIntegerOrExpressionType" default="1024"/>
     </xs:complexType>
 
     <xs:complexType name="propertiesType">

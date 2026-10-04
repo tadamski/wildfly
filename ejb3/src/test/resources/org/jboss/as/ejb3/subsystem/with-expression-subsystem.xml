@@ -115,7 +115,8 @@
                relative-to="${sysprop:jboss.server.log.dir}"
                rotate-suffix="${sysprop:.yyyy-MM-dd}"
                include-local="${sysprop:true}"
-               include-node-name="${sysprop:false}">
+               include-node-name="${sysprop:false}"
+               queue-length="${ejb.access.queue:2048}">
         <metadata>
             <property name="env" value="${sysprop:prod}"/>
         </metadata>

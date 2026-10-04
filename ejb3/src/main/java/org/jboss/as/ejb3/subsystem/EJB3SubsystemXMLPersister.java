@@ -354,6 +354,7 @@ public class EJB3SubsystemXMLPersister implements XMLElementWriter<SubsystemMars
         AccessLogResourceDefinition.INCLUDE_LOCAL.marshallAsAttribute(model, writer);
         AccessLogResourceDefinition.INCLUDE_NODE_NAME.marshallAsAttribute(model, writer);
         AccessLogResourceDefinition.ATTRIBUTES.getMarshaller().marshallAsAttribute(AccessLogResourceDefinition.ATTRIBUTES, model, false, writer);
+        AccessLogResourceDefinition.QUEUE_LENGTH.marshallAsAttribute(model, writer);
         if (model.hasDefined(EJB3SubsystemModel.METADATA) && !model.get(EJB3SubsystemModel.METADATA).asPropertyList().isEmpty()) {
             AccessLogResourceDefinition.METADATA.marshallAsElement(model, writer);
         }

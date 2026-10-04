@@ -138,6 +138,7 @@ public interface EJB3SubsystemModel {
     String METADATA = "metadata";
     String EVENTS_LOGGED = "events-logged";
     String EVENTS_DROPPED = "events-dropped";
+    String QUEUE_LENGTH = "queue-length";
 
     PathElement REMOTE_SERVICE_PATH = PathElement.pathElement(SERVICE, REMOTE);
     PathElement ASYNC_SERVICE_PATH = PathElement.pathElement(SERVICE, ASYNC);

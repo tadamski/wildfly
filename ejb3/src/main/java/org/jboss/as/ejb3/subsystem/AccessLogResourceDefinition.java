@@ -22,6 +22,7 @@ import org.jboss.as.controller.SimpleResourceDefinition;
 import org.jboss.as.controller.StringListAttributeDefinition;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.operations.validation.EnumValidator;
+import org.jboss.as.controller.operations.validation.IntRangeValidator;
 import org.jboss.as.controller.operations.validation.StringAllowedValuesValidator;
 import org.jboss.as.controller.operations.validation.StringLengthValidator;
 import org.jboss.as.controller.registry.AttributeAccess;
@@ -148,8 +149,22 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
             .setStorageRuntime()
             .build();
 
+    /**
+     * Maximum number of events the async queue may hold before additional events are dropped.
+     * Matches the {@code queue-length} attribute of the logging subsystem's {@code async-handler},
+     * which carries the same concept. The bound is fixed when the queue is constructed;
+     * changes require {@code RESTART_RESOURCE_SERVICES}.
+     */
+    static final SimpleAttributeDefinition QUEUE_LENGTH =
+            new SimpleAttributeDefinitionBuilder(EJB3SubsystemModel.QUEUE_LENGTH, ModelType.INT, true)
+                    .setAllowExpression(true)
+                    .setDefaultValue(new ModelNode(1024))
+                    .setValidator(new IntRangeValidator(1, true, true))
+                    .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
+                    .build();
+
     private static final AttributeDefinition[] RESTART_RESOURCE_SERVICES_ATTRIBUTES = new AttributeDefinition[]{
-            DESTINATION, PATH, RELATIVE_TO, ROTATE_SUFFIX, WORKER, ATTRIBUTES
+            DESTINATION, PATH, RELATIVE_TO, ROTATE_SUFFIX, WORKER, ATTRIBUTES, QUEUE_LENGTH
     };
 
     private static final AttributeDefinition[] RESTART_NONE_ATTRIBUTES = new AttributeDefinition[]{
@@ -157,7 +172,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
     };
 
     private static final AttributeDefinition[] ALL_CONFIG_ATTRIBUTES = new AttributeDefinition[]{
-            DESTINATION, PATH, RELATIVE_TO, ROTATE_SUFFIX, WORKER, INCLUDE_LOCAL, INCLUDE_NODE_NAME, ATTRIBUTES, METADATA
+            DESTINATION, PATH, RELATIVE_TO, ROTATE_SUFFIX, WORKER, INCLUDE_LOCAL, INCLUDE_NODE_NAME, ATTRIBUTES, METADATA, QUEUE_LENGTH
     };
 
     private static final AccessLogAdd ADD_HANDLER = new AccessLogAdd(ALL_CONFIG_ATTRIBUTES);

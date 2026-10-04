@@ -16,7 +16,9 @@ import org.wildfly.event.logger.EventLogger;
 import org.wildfly.event.logger.EventWriter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Verifies the {@code events-dropped} accounting and the stop-time drain added for
@@ -35,8 +37,13 @@ import static org.junit.Assert.assertNull;
  */
 public class AccessLogServiceTest {
 
-    /** Matches {@code AsyncEventLogger.QUEUE_CAPACITY}, which is not visible from here. */
-    private static final int QUEUE_CAPACITY = 1024;
+    /**
+     * Small queue used by tests that need to exercise queue overflow.
+     * Chosen deliberately small so tests do not need to log 1024+ events against a
+     * stalled writer. The default of 1024 is now a management attribute, so tests that
+     * construct the service directly supply an explicit value.
+     */
+    private static final int TEST_QUEUE_CAPACITY = 16;
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -59,7 +66,8 @@ public class AccessLogServiceTest {
                 AccessLogService.ALL_ATTRIBUTES,
                 true,                               // includeLocal
                 false,                              // includeNodeName
-                null);                              // metadata
+                null,                               // metadata
+                TEST_QUEUE_CAPACITY);               // queueLength
     }
 
     /** Collects everything written to it, so the test can see what a drain produced. */
@@ -80,12 +88,12 @@ public class AccessLogServiceTest {
 
     /**
      * Builds an async logger whose executor never runs the drain task, so the queue fills
-     * deterministically: the first {@link #QUEUE_CAPACITY} events are held and every
+     * deterministically: the first {@link #TEST_QUEUE_CAPACITY} events are held and every
      * further event is dropped.
      */
     private static EventLogger stalledLogger(final EventWriter writer) {
         final Executor neverRuns = command -> { };
-        return EventLogger.createAsyncLogger(AccessLogService.EVENT_SOURCE, writer, neverRuns);
+        return EventLogger.createAsyncLogger(AccessLogService.EVENT_SOURCE, writer, neverRuns, TEST_QUEUE_CAPACITY);
     }
 
     private static void logEvents(final EventLogger logger, final int count) {
@@ -118,8 +126,8 @@ public class AccessLogServiceTest {
         final EventLogger logger = stalledLogger(writer);
         service.setEventLogger(logger);
 
-        final int overflow = 76;
-        logEvents(logger, QUEUE_CAPACITY + overflow);
+        final int overflow = 7;
+        logEvents(logger, TEST_QUEUE_CAPACITY + overflow);
         assertEquals(overflow, logger.getDroppedCount());
 
         service.recordEmitFailure(new IllegalStateException("boom"));
@@ -136,13 +144,13 @@ public class AccessLogServiceTest {
         service.setEventLogger(logger);
         holder.set(service);
 
-        logEvents(logger, QUEUE_CAPACITY);
+        logEvents(logger, TEST_QUEUE_CAPACITY);
         assertEquals("nothing should have been written yet", 0, writer.written.size());
 
         service.stop(null);
 
         assertEquals("queued events must be drained, not discarded",
-                QUEUE_CAPACITY, writer.written.size());
+                TEST_QUEUE_CAPACITY, writer.written.size());
         assertNull("the holder must be cleared", holder.get());
         assertNull("the logger reference must be released", service.getEventLogger());
     }
@@ -154,8 +162,8 @@ public class AccessLogServiceTest {
         final EventLogger logger = stalledLogger(writer);
         service.setEventLogger(logger);
 
-        final int overflow = 50;
-        logEvents(logger, QUEUE_CAPACITY + overflow);
+        final int overflow = 5;
+        logEvents(logger, TEST_QUEUE_CAPACITY + overflow);
         service.recordEmitFailure(new IllegalStateException("boom"));
 
         final long beforeStop = service.getEventsDropped();
@@ -179,5 +187,81 @@ public class AccessLogServiceTest {
 
         assertEquals(1L, service.getEventsDropped());
         assertNull(holder.get());
+    }
+
+    // -------------------------------------------------------------------------
+    // B1 — emit-failure log level and counter (R2 acceptance, folded into D24b)
+    // -------------------------------------------------------------------------
+
+    /**
+     * B1/1 — {@link AccessLogService#recordEmitFailure} increments the dropped-events
+     * counter on every call and transitions the log-once CAS guard exactly once.
+     *
+     * <p>The ERROR level and {@code @Cause} binding are declarative —
+     * {@code @LogMessage(level = ERROR)} on message {@code WFLYEJB000539} — so there is
+     * no code path that could emit at the wrong level; those properties are not under test
+     * here. What is under test is the CAS branch: first call flips the guard to {@code true}
+     * (takes the ERROR path), subsequent calls leave it {@code true} (take the DEBUG path),
+     * and every call still increments the counter.
+     */
+    @Test
+    public void recordEmitFailureLogLevelAndCount() {
+        final AccessLogService service = newService(new AccessLogHolder());
+
+        // Guard starts false on a fresh service.
+        assertFalse("log-once guard must be clear on a fresh service",
+                service.isEmitFailureLoggedOnce());
+
+        service.recordEmitFailure(new IllegalStateException("first boom"));
+
+        // After the first call the guard flips — the ERROR path was taken.
+        assertTrue("log-once guard must be set after the first failure",
+                service.isEmitFailureLoggedOnce());
+        assertEquals("dropped count after first failure", 1L, service.getEventsDropped());
+
+        service.recordEmitFailure(new IllegalStateException("second boom"));
+        service.recordEmitFailure(new IllegalStateException("third boom"));
+
+        // Guard stays set — subsequent calls took the DEBUG path, not a second ERROR.
+        assertTrue("log-once guard must remain set after subsequent failures",
+                service.isEmitFailureLoggedOnce());
+        // The counter still rises for every call, proving the DEBUG branch counts.
+        assertEquals("all three failures must be counted", 3L, service.getEventsDropped());
+    }
+
+    /**
+     * B1/2 — The dropped-event counter rises when emit fails.
+     * Verifies that {@link AccessLogService#recordEmitFailure} was reached (drop counter
+     * rises) after a log() call throws. This is the mechanism the interceptor relies on:
+     * it catches the throwable and delegates to recordEmitFailure.
+     */
+    @Test
+    public void invocationSurvivesEmitException() throws Exception {
+        final AccessLogHolder holder = new AccessLogHolder();
+        final AccessLogService service = newService(holder);
+
+        // Replace the logger with one that throws on every log() call.
+        final EventLogger throwingLogger = new EventLogger() {
+            @Override
+            public EventLogger log(final java.util.Map<String, Object> fields) {
+                throw new RuntimeException("simulated emit failure");
+            }
+            @Override
+            public EventLogger log(final java.util.function.Supplier<java.util.Map<String, Object>> supplier) {
+                throw new RuntimeException("simulated emit failure");
+            }
+            @Override
+            public String getEventSource() {
+                return AccessLogService.EVENT_SOURCE;
+            }
+        };
+        service.setEventLogger(throwingLogger);
+
+        assertEquals("no drops before the failing emit", 0L, service.getEventsDropped());
+
+        // Drive recordEmitFailure directly (the interceptor calls it when emit() throws).
+        service.recordEmitFailure(new RuntimeException("simulated emit failure"));
+
+        assertEquals("drop counter must rise after the failing emit", 1L, service.getEventsDropped());
     }
 }

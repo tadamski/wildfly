@@ -861,6 +861,87 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     // -------------------------------------------------------------------------
+    // D24b — queue-length attribute tests
+    // -------------------------------------------------------------------------
+
+    /**
+     * D24b/1 — default value of {@code queue-length} is 1024 when not specified.
+     */
+    @Test
+    public void testQueueLengthDefault() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final ModelNode model = ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log");
+        assertEquals("queue-length default must be 1024", 1024, model.get("queue-length").asInt());
+    }
+
+    /**
+     * D24b/2 — an explicit {@code queue-length} value round-trips through the model.
+     */
+    @Test
+    public void testQueueLengthExplicit() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final ModelNode model = ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log");
+        assertEquals("queue-length must round-trip from subsystem.xml", 2048, model.get("queue-length").asInt());
+    }
+
+    /**
+     * D24b/3 — {@code queue-length} expressed as an expression is stored correctly.
+     * Acceptance check for the xs:union pattern: if {@code testSchema} passes with
+     * with-expression-subsystem.xml containing {@code queue-length="${ejb.access.queue:2048}"}
+     * then the XSD union did not repeat the D1 defect.
+     */
+    @Test
+    public void testQueueLengthExpression() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(createAdditionalInitialization())
+                .setSubsystemXml(readResource("with-expression-subsystem.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final ModelNode accessLog = ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log");
+        // The expression ${ejb.access.queue:2048} resolves to 2048
+        assertEquals("queue-length expression must resolve to 2048",
+                2048, accessLog.get("queue-length").resolve().asInt());
+    }
+
+    /**
+     * D24b/4 — {@code queue-length} can be changed via write-attribute (model round-trip).
+     */
+    @Test
+    public void testQueueLengthWriteAttribute() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        final ModelNode write = Util.getWriteAttributeOperation(ACCESS_LOG_ADDR, "queue-length", new ModelNode(512));
+        final ModelNode result = ks.executeOperation(write);
+        assertEquals("write queue-length=512 should succeed: " + result, "success", result.get("outcome").asString());
+        assertEquals("model should reflect new queue-length", 512,
+                ks.readWholeModel().get("subsystem", "ejb3", "service", "access-log", "queue-length").asInt());
+    }
+
+    /**
+     * D24b/5 — {@code queue-length=0} must be rejected (minimum is 1).
+     */
+    @Test
+    public void testQueueLengthRejectZero() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        ks.executeOperation(Util.createRemoveOperation(ACCESS_LOG_ADDR));
+
+        final ModelNode addOp = Util.createAddOperation(ACCESS_LOG_ADDR);
+        addOp.get("queue-length").set(0);
+        final ModelNode result = ks.executeOperation(addOp);
+        assertEquals(":add(queue-length=0) must be rejected", "failed", result.get("outcome").asString());
+    }
+
+    // -------------------------------------------------------------------------
 
     /**
      * Returns {@code true} when the operation response contains a

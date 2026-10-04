@@ -81,6 +81,9 @@ public class EJB3Subsystem120Parser extends EJB3Subsystem110Parser {
                 case ATTRIBUTES:
                     AccessLogResourceDefinition.ATTRIBUTES.getParser().parseAndSetParameter(AccessLogResourceDefinition.ATTRIBUTES, value, operation, reader);
                     break;
+                case QUEUE_LENGTH:
+                    AccessLogResourceDefinition.QUEUE_LENGTH.parseAndSetParameter(value, operation, reader);
+                    break;
                 default:
                     throw unexpectedAttribute(reader, i);
             }

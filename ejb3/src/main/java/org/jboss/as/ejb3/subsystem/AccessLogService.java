@@ -73,6 +73,8 @@ public class AccessLogService implements Service {
     private final boolean fileAttrsExplicitlySet;
     /** Enabled log fields; defaults to all tokens when the model attribute is UNDEFINED. */
     private final Set<AccessLogResourceDefinition.AttributeVocabulary> enabledAttributes;
+    /** Maximum async queue depth. Corresponds to the {@code queue-length} management attribute. */
+    private final int queueLength;
 
     // Live-mutable configuration (RESTART_NONE attributes)
     private volatile boolean includeLocal;
@@ -109,7 +111,8 @@ public class AccessLogService implements Service {
             final Set<AccessLogResourceDefinition.AttributeVocabulary> enabledAttributes,
             final boolean includeLocal,
             final boolean includeNodeName,
-            final java.util.Map<String, Object> metadata) {
+            final java.util.Map<String, Object> metadata,
+            final int queueLength) {
         this.serviceConsumer = serviceConsumer;
         this.holderSupplier = holderSupplier;
         this.worker = worker;
@@ -123,6 +126,7 @@ public class AccessLogService implements Service {
         this.includeLocal = includeLocal;
         this.includeNodeName = includeNodeName;
         this.metadata = metadata;
+        this.queueLength = queueLength;
     }
 
     @Override
@@ -144,7 +148,7 @@ public class AccessLogService implements Service {
         // Wrap with a counting writer so we can report events-logged.
         final EventWriter countingWriter = new CountingEventWriter(writer, eventsLogged);
 
-        this.eventLogger = EventLogger.createAsyncLogger(EVENT_SOURCE, countingWriter, worker.get());
+        this.eventLogger = EventLogger.createAsyncLogger(EVENT_SOURCE, countingWriter, worker.get(), queueLength);
         emitFailureLogged.set(false);
         holderSupplier.get().set(this);
         serviceConsumer.accept(this);
@@ -198,6 +202,18 @@ public class AccessLogService implements Service {
      */
     void setEventLogger(final EventLogger eventLogger) {
         this.eventLogger = eventLogger;
+    }
+
+    /**
+     * Returns {@code true} if the log-once guard has fired at least once — i.e. if the
+     * first emit failure has already been logged at ERROR.
+     *
+     * <p>Package-private seam for {@code AccessLogServiceTest} to verify the CAS branch
+     * in {@link #recordEmitFailure} without capturing log records. Production code never
+     * calls this.
+     */
+    boolean isEmitFailureLoggedOnce() {
+        return emitFailureLogged.get();
     }
 
     /** Returns the set of enabled log field tokens. Never null. */

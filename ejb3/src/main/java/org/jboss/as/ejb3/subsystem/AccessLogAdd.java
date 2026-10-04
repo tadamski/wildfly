@@ -57,6 +57,7 @@ public class AccessLogAdd extends AbstractAddStepHandler {
         final String worker = AccessLogResourceDefinition.WORKER.resolveModelAttribute(context, model).asString();
         final boolean includeLocal = AccessLogResourceDefinition.INCLUDE_LOCAL.resolveModelAttribute(context, model).asBoolean();
         final boolean includeNodeName = AccessLogResourceDefinition.INCLUDE_NODE_NAME.resolveModelAttribute(context, model).asBoolean();
+        final int queueLength = AccessLogResourceDefinition.QUEUE_LENGTH.resolveModelAttribute(context, model).asInt();
 
         // Parse the enabled-attributes list. UNDEFINED → all 13 tokens (default-all).
         final ModelNode attributesNode = model.get(EJB3SubsystemModel.ATTRIBUTES);
@@ -95,7 +96,7 @@ public class AccessLogAdd extends AbstractAddStepHandler {
         final AccessLogService service = new AccessLogService(
                 serviceConsumer, holderSupplier, workerSupplier, pathManagerSupplier,
                 destination, path, relativeTo, rotateSuffix, fileAttrsExplicitlySet,
-                enabledAttributes, includeLocal, includeNodeName, metadata);
+                enabledAttributes, includeLocal, includeNodeName, metadata, queueLength);
         sb.setInstance(service)
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .install();

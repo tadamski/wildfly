@@ -58,6 +58,8 @@ public enum EJB3SubsystemXMLAttribute {
 
     LOCAL_RECEIVER_PASS_BY_VALUE("local-receiver-pass-by-value"),
 
+    QUEUE_LENGTH(EJB3SubsystemModel.QUEUE_LENGTH),
+
     MAX_POOL_SIZE("max-pool-size"),
     MAX_SIZE("max-size"),
     DERIVE_SIZE("derive-size"),
