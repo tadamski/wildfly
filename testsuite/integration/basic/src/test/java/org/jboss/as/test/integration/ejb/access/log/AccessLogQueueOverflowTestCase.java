@@ -212,20 +212,18 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
 
     /**
      * B3/1 — Change {@code queue-length} to 4096 (large) and run the same concurrent burst.
-     * Assert that no additional drops appear beyond those already counted in B2.
+     * Assert that {@code events-dropped} remains zero on the fresh service instance.
      *
      * <p>{@code queue-length} is {@code RESTART_RESOURCE_SERVICES}: the write-attribute
-     * restarts the service, which resets the async logger but folds its drop count into
-     * the local counter before the logger is discarded.  The delta therefore measures only
-     * what happened during the large-queue burst.
+     * removes the old service object and installs a brand-new one whose {@code eventsDropped}
+     * counter starts at zero.  Reading the counter after the burst therefore measures exactly
+     * what the large-queue burst produced — no delta arithmetic needed or valid.
      */
     @Test
     @InSequence(20)
     @RunAsClient
     public void testNoAdditionalDropsWithLargeQueue() throws Exception {
-        final long droppedBefore = readEventsDropped();
-
-        // Switch to a large queue — triggers RESTART_RESOURCE_SERVICES.
+        // Switch to a large queue — triggers RESTART_RESOURCE_SERVICES, new service instance.
         writeQueueLength(4096);
 
         // Wait for the service restart to complete.
@@ -236,17 +234,15 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
         // Allow drain to settle.
         Thread.sleep(500);
 
-        final long droppedAfter = readEventsDropped();
-        final long additionalDrops = droppedAfter - droppedBefore;
+        final long dropped = readEventsDropped();
 
-        System.out.println("[B3] events-dropped before mutation (queue=4096): " + droppedBefore);
-        System.out.println("[B3] events-dropped after burst with large queue:  " + droppedAfter);
-        System.out.println("[B3] additional drops with queue-length=4096: " + additionalDrops);
+        System.out.println("[B3] events-dropped with queue-length=4096 after "
+                + THREAD_COUNT + "x" + CALLS_PER_THREAD + " invocations: " + dropped);
 
         Assert.assertEquals(
-                "No additional drops expected with queue-length=4096 after "
-                        + THREAD_COUNT + "x" + CALLS_PER_THREAD + " invocations; got: " + additionalDrops,
-                0L, additionalDrops);
+                "events-dropped must be 0 with queue-length=4096 after "
+                        + THREAD_COUNT + "x" + CALLS_PER_THREAD + " invocations; got: " + dropped,
+                0L, dropped);
     }
 
     // -----------------------------------------------------------------------
