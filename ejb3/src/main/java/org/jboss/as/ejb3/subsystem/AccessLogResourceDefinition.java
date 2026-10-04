@@ -189,9 +189,9 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
      * leaf.  This handler removes unconditionally, matching the approach used by
      * {@code ConsoleAccessLogDefinition.RemoveHandler} in Undertow.
      *
-     * <p>Note: {@link #recoverServices} calls {@code ADD_HANDLER.performRuntime} on rollback,
-     * which resets the counters to zero. In the rare case of a rolled-back removal, the
-     * metrics restart from zero rather than restoring pre-removal counts.
+     * <p>{@link #recoverServices} restores the service through
+     * {@code ADD_HANDLER.installService}, not {@code performRuntime}, so a rolled-back removal
+     * leaves the counters as they were. Only the management {@code :add} operation zeroes them.
      */
     private static final class RemoveHandler extends AbstractRemoveStepHandler {
 
@@ -206,7 +206,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         @Override
         protected void recoverServices(OperationContext context, ModelNode operation, ModelNode model)
                 throws OperationFailedException {
-            ADD_HANDLER.performRuntime(context, operation, model);
+            ADD_HANDLER.installService(context, operation, model);
         }
     }
 
@@ -237,7 +237,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
                     HandbackHolder<Void> handbackHolder) throws OperationFailedException {
                 // Remove the current service, then re-install with the updated model.
                 context.removeService(ACCESS_LOG_CAPABILITY.getCapabilityServiceName());
-                ADD_HANDLER.performRuntime(context, operation, context.readResource(org.jboss.as.controller.PathAddress.EMPTY_ADDRESS).getModel());
+                ADD_HANDLER.installService(context, operation, context.readResource(org.jboss.as.controller.PathAddress.EMPTY_ADDRESS).getModel());
                 return false; // false = no reload required
             }
 
@@ -247,7 +247,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
                     Void handback) throws OperationFailedException {
                 // Revert by re-installing with the original model (already restored by the framework).
                 context.removeService(ACCESS_LOG_CAPABILITY.getCapabilityServiceName());
-                ADD_HANDLER.performRuntime(context, operation, context.readResource(org.jboss.as.controller.PathAddress.EMPTY_ADDRESS).getModel());
+                ADD_HANDLER.installService(context, operation, context.readResource(org.jboss.as.controller.PathAddress.EMPTY_ADDRESS).getModel());
             }
         };
 

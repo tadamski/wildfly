@@ -40,16 +40,35 @@ public class AccessLogAdd extends AbstractAddStepHandler {
         validateDestinationAttributes(model);
     }
 
+    /**
+     * Handles the {@code :add} operation: zeroes the counters, then installs the service.
+     *
+     * <p>The reset lives here and <em>only</em> here, because this method runs for the
+     * management {@code :add} operation alone. Service re-installation triggered by a
+     * {@code RESTART_RESOURCE_SERVICES} attribute write, and service restoration after a
+     * rolled-back {@code :remove}, both call {@link #installService} directly and so leave
+     * the counters intact. That is what gives the metric its documented meaning —
+     * <em>counts since the access-log resource was added</em> — rather than
+     * "counts since someone last changed an attribute".
+     */
     @Override
     protected void performRuntime(final OperationContext context, final ModelNode operation, final ModelNode model)
             throws OperationFailedException {
-        // Reset counters to zero on resource creation (or roll-back of removal).
-        // Matches the metric definition: counts since the access-log resource was added.
         final AccessLogHolder holder = getHolder(context.getServiceRegistry(true));
         if (holder != null) {
             holder.resetCounters();
         }
+        installService(context, operation, model);
+    }
 
+    /**
+     * Installs the {@link AccessLogService} from the supplied model, without touching the
+     * counters. Called by {@link #performRuntime} on {@code :add}, by the
+     * {@code RESTART_RESOURCE_SERVICES} write handler on every restart, and by
+     * {@code RemoveHandler.recoverServices} on rollback.
+     */
+    void installService(final OperationContext context, final ModelNode operation, final ModelNode model)
+            throws OperationFailedException {
         final String destination = AccessLogResourceDefinition.DESTINATION.resolveModelAttribute(context, model).asString();
         // Resolve path/relativeTo/rotateSuffix including defaults — used when destination=file.
         final ModelNode pathNode = AccessLogResourceDefinition.PATH.resolveModelAttribute(context, model);
