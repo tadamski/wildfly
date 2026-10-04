@@ -202,6 +202,12 @@ public final class EjbAccessLogInterceptor implements Interceptor {
                 final String protocol = request.getProtocol();
                 if (protocol != null) data.put("protocol", protocol);
             }
+            if (enabled.contains(AttributeVocabulary.TRANSPORT)) {
+                data.put("transport", deriveTransport(request.getProtocol()));
+            }
+        } else if (enabled.contains(AttributeVocabulary.TRANSPORT)) {
+            // No Request — in-VM (local) invocation.
+            data.put("transport", "local");
         }
 
         // --- Invocation type ---
@@ -245,5 +251,39 @@ public final class EjbAccessLogInterceptor implements Interceptor {
         }
 
         logger.log(data);
+    }
+
+    /**
+     * Maps {@code Request.getProtocol()} to the stable {@code transport} vocabulary.
+     *
+     * <p>The mapping is explicit and exhaustive over the known values:
+     * <ul>
+     *   <li>{@code null} or any value starting with {@code "HTTP/"} — the wildfly-http-client
+     *       transport reports the wire version here (e.g. {@code "HTTP/1.1"}, {@code "HTTP/2.0"}).
+     *       All such values map to {@code "http"}.
+     *   <li>{@code "remoting"} — plain JBoss Remoting → {@code "remoting"}.
+     *   <li>{@code "http-remoting"} — Remoting tunnelled over an HTTP upgrade → {@code "http-remoting"}.
+     *   <li>{@code "iiop"} — reserved for the IIOP capture point (E7); unreachable in this release.
+     *   <li>Any other value — unrecognised; yields {@code "unknown"} rather than silently omitting
+     *       the field, so that the record remains queryable even when the protocol is unexpected.
+     * </ul>
+     *
+     * @param protocol the value returned by {@link org.jboss.ejb.server.Request#getProtocol()};
+     *                 may be {@code null}
+     * @return a stable, non-null transport label
+     */
+    static String deriveTransport(final String protocol) {
+        if (protocol == null) {
+            return "unknown";
+        }
+        if (protocol.startsWith("HTTP/")) {
+            return "http";
+        }
+        switch (protocol) {
+            case "remoting":      return "remoting";
+            case "http-remoting": return "http-remoting";
+            case "iiop":          return "iiop";
+            default:              return "unknown";
+        }
     }
 }

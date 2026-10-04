@@ -942,6 +942,56 @@ public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
     }
 
     // -------------------------------------------------------------------------
+    // E8 — transport token
+    // -------------------------------------------------------------------------
+
+    /**
+     * E8/1 — {@code transport} is a valid token in an explicit {@code attributes} list
+     * and round-trips through the model without error.
+     *
+     * <p><strong>Model-only (ADMIN_ONLY mode).</strong>
+     */
+    @Test
+    public void testTransportTokenRoundTripsInAttributesList() throws Exception {
+        final KernelServices ks = createKernelServicesBuilder(AdditionalInitialization.MANAGEMENT)
+                .setSubsystemXml(readResource("subsystem-access-log-minimal.xml")).build();
+        assertTrue("boot failed", ks.isSuccessfulBoot());
+
+        ks.executeOperation(Util.createRemoveOperation(ACCESS_LOG_ADDR));
+
+        final ModelNode addOp = Util.createAddOperation(ACCESS_LOG_ADDR);
+        final ModelNode attrList = addOp.get("attributes").setEmptyList();
+        attrList.add("transport");
+        attrList.add("protocol");
+        attrList.add("bean");
+        attrList.add("outcome");
+        final ModelNode result = ks.executeOperation(addOp);
+        assertEquals(":add with transport in attributes list must succeed: " + result,
+                "success", result.get("outcome").asString());
+
+        // Verify the token round-trips in the model
+        final ModelNode stored = ks.readWholeModel()
+                .get("subsystem", "ejb3", "service", "access-log", "attributes");
+        assertTrue("attributes must be defined after explicit :add", stored.isDefined());
+        final java.util.List<ModelNode> tokens = stored.asList();
+        assertTrue("transport must appear in the stored attributes list",
+                tokens.stream().anyMatch(n -> "transport".equals(n.asString())));
+        assertTrue("protocol must appear in the stored attributes list",
+                tokens.stream().anyMatch(n -> "protocol".equals(n.asString())));
+    }
+
+    /**
+     * E8/2 — When {@code attributes} is undefined (the default), {@code AccessLogService.ALL_ATTRIBUTES}
+     * contains the {@code TRANSPORT} token, confirming a default record will carry the field.
+     */
+    @Test
+    public void testTransportPresentInDefaultAllAttributes() {
+        assertTrue("TRANSPORT must be in ALL_ATTRIBUTES (default record carries the field)",
+                AccessLogService.ALL_ATTRIBUTES.contains(
+                        AccessLogResourceDefinition.AttributeVocabulary.TRANSPORT));
+    }
+
+    // -------------------------------------------------------------------------
 
     /**
      * Returns {@code true} when the operation response contains a

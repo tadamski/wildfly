@@ -106,6 +106,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         LOCAL_ADDRESS("local-address"),
         LOCAL_PORT("local-port"),
         PROTOCOL("protocol"),
+        TRANSPORT("transport"),
         INVOCATION_TYPE("invocation-type"),
         SESSION_ID("session-id"),
         OUTCOME("outcome"),

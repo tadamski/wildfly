@@ -49,7 +49,7 @@ public class AccessLogService implements Service {
     static final String LOG_CATEGORY = "org.jboss.as.ejb3.access-log";
     static final String EVENT_SOURCE = "ejb-access";
 
-    /** All 13 tokens enabled — used when the model attribute is UNDEFINED. */
+    /** All 21 tokens enabled — used when the model attribute is UNDEFINED. */
     static final Set<AccessLogResourceDefinition.AttributeVocabulary> ALL_ATTRIBUTES =
             EnumSet.allOf(AccessLogResourceDefinition.AttributeVocabulary.class);
 
