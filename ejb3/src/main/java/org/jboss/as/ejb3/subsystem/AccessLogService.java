@@ -20,6 +20,7 @@ import org.jboss.msc.Service;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
+import org.wildfly.event.logger.Event;
 import org.wildfly.event.logger.EventLogger;
 import org.wildfly.event.logger.EventWriter;
 import org.wildfly.event.logger.FileEventWriter;
@@ -354,7 +355,7 @@ public class AccessLogService implements Service {
         }
 
         @Override
-        public void write(final org.wildfly.event.logger.Event event) {
+        public void write(final Event event) {
             delegate.write(event);
             if (holder != null) {
                 holder.incrementEventsLogged();

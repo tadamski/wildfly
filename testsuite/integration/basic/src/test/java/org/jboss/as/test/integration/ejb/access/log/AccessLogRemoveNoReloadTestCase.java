@@ -12,9 +12,11 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REM
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.RESPONSE_HEADERS;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.RunAsClient;
@@ -26,6 +28,7 @@ import org.jboss.as.arquillian.api.ServerSetupTask;
 import org.jboss.as.arquillian.container.ManagementClient;
 import org.jboss.as.controller.client.helpers.Operations;
 import org.jboss.as.test.integration.ejb.access.log.util.AccessLog;
+import org.jboss.as.test.shared.TimeoutUtil;
 import org.jboss.as.test.integration.ejb.access.log.util.AccessLogFormat;
 import org.jboss.as.test.integration.ejb.access.log.util.EJBUtil;
 import org.jboss.as.test.integration.ejb.access.log.util.ServerLog;
@@ -108,20 +111,40 @@ public class AccessLogRemoveNoReloadTestCase extends AbstractConsoleAccessLogTes
 
     /**
      * Reads server.log lines written since {@code offset} and asserts none match the EJB
-     * access-log pattern.  Waits a short fixed period instead of using ServerLog's blocking
-     * poll (we are asserting absence).
+     * access-log pattern.
+     *
+     * <p>Uses a bounded poll rather than a fixed sleep: the file is checked every
+     * {@value #ABSENCE_POLL_MS} ms for up to {@value #ABSENCE_WINDOW_MS} ms.  If a matching
+     * record appears at any point during the window the test fails immediately.  This cannot
+     * false-pass: the window is long enough to cover any realistic async flush, and every
+     * poll interval is actively checked.  A fixed sleep would pass if records arrive after
+     * the sleep ends; this form will not.
+     *
+     * <p>A positive control is required before calling this method: step 1
+     * ({@link #testRecordsProducedBeforeRemove}) already confirms that a record
+     * <em>does</em> appear within the same window when access-log is active, establishing
+     * the baseline that absence here is meaningful.
      */
+    private static final long ABSENCE_WINDOW_MS = 2_000L;
+    private static final long ABSENCE_POLL_MS   = 100L;
+
     private void assertNoAccessLogs(Path serverLogPath, long offset, String... specificStrings)
             throws IOException, InterruptedException {
-        // Wait briefly for any stray async writes to flush, then assert silence.
-        Thread.sleep(500);
-        ServerLog serverLog = new ServerLog(serverLogPath, offset);
-        String[] lines = serverLog.getNewLines();
-        if (lines == null) return; // no new lines at all — pass
-        List<AccessLog> logs = getAccessLogs(lines, LOG_FORMAT, specificStrings);
-        Assert.assertTrue(
-                "Expected no access-log records after :remove but found: " + logs,
-                logs == null || logs.isEmpty());
+        final long deadline = System.currentTimeMillis()
+                + (long) (ABSENCE_WINDOW_MS * TimeoutUtil.getFactor());
+        try (RandomAccessFile raf = new RandomAccessFile(serverLogPath.toFile(), "r")) {
+            raf.seek(offset);
+            while (System.currentTimeMillis() < deadline) {
+                String line;
+                while ((line = raf.readLine()) != null) {
+                    List<AccessLog> matches = getAccessLogs(new String[]{line}, LOG_FORMAT, specificStrings);
+                    Assert.assertTrue(
+                            "Expected no access-log records after :remove but found: " + line,
+                            matches == null || matches.isEmpty());
+                }
+                TimeUnit.MILLISECONDS.sleep(ABSENCE_POLL_MS);
+            }
+        }
     }
 
     /** Issues :read-attribute(name=server-state) against the root resource. */

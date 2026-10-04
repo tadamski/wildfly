@@ -59,7 +59,8 @@ public final class EjbAccessLogInterceptor implements Interceptor {
         final EJBComponent ejbComponent = (EJBComponent) context.getPrivateData(Component.class);
         final AccessLogService service = ejbComponent.getAccessLogHolder().get();
         if (service == null) {
-            // Access log not configured — fast path, one volatile read.
+            // Access log not configured — fast path: one private-data lookup, one cast,
+            // one holder-field read, one volatile read.
             return context.proceed();
         }
 

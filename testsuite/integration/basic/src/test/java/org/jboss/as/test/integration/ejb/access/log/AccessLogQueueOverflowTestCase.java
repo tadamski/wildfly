@@ -30,6 +30,7 @@ import org.jboss.as.arquillian.api.ServerSetupTask;
 import org.jboss.as.arquillian.container.ManagementClient;
 import org.jboss.as.controller.client.helpers.Operations;
 import org.jboss.as.test.integration.ejb.access.log.util.EJBUtil;
+import org.jboss.as.test.shared.TimeoutUtil;
 import org.jboss.as.test.integration.security.common.Utils;
 import org.jboss.dmr.ModelNode;
 import org.jboss.shrinkwrap.api.Archive;
@@ -95,6 +96,13 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
     // Helpers
     // -----------------------------------------------------------------------
 
+    /**
+     * Maximum milliseconds to wait when polling for drain or service-restart completion.
+     * Adjusted by {@link TimeoutUtil} so slow CI machines get proportionally longer.
+     */
+    private static final long POLL_TIMEOUT_MS = 5_000L;
+    private static final long POLL_INTERVAL_MS = 100L;
+
     /** Reads the current {@code events-dropped} counter from the management model. */
     private long readEventsDropped() throws IOException {
         ModelNode address = new ModelNode();
@@ -158,6 +166,55 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
         }
     }
 
+    /**
+     * Polls {@code events-dropped} every {@value #POLL_INTERVAL_MS} ms until it has not changed
+     * for two consecutive reads (drain is complete) or the timeout elapses.
+     *
+     * <p>This replaces a fixed sleep: a fixed sleep either under-waits (false-pass when drain is
+     * still in-flight) or over-waits.  The poll exits as soon as the counter is stable, so it
+     * cannot pass before the drain thread has finished.
+     */
+    private long pollUntilDropCountStable() throws IOException, InterruptedException {
+        final long deadline = System.currentTimeMillis()
+                + (long) (POLL_TIMEOUT_MS * TimeoutUtil.getFactor());
+        long prev = readEventsDropped();
+        long cur;
+        while (System.currentTimeMillis() < deadline) {
+            TimeUnit.MILLISECONDS.sleep(POLL_INTERVAL_MS);
+            cur = readEventsDropped();
+            if (cur == prev) {
+                return cur;  // stable
+            }
+            prev = cur;
+        }
+        return prev;
+    }
+
+    /**
+     * Polls until {@code events-dropped} can be read without error — meaning the
+     * {@code AccessLogService} has started again after a {@code RESTART_RESOURCE_SERVICES}
+     * attribute write.
+     *
+     * <p>The service restart is kicked off synchronously by the DMR write-attribute operation
+     * but the new service instance starts asynchronously.  Polling here rather than sleeping a
+     * fixed interval prevents both false-passes (reading a stale counter before the new service
+     * is up) and needless over-waiting on fast machines.
+     */
+    private void waitForServiceRestart() throws IOException, InterruptedException {
+        final long deadline = System.currentTimeMillis()
+                + (long) (POLL_TIMEOUT_MS * TimeoutUtil.getFactor());
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                readEventsDropped();
+                return;  // service is up
+            } catch (Exception ignored) {
+                TimeUnit.MILLISECONDS.sleep(POLL_INTERVAL_MS);
+            }
+        }
+        // Last attempt — let any exception propagate as a test failure.
+        readEventsDropped();
+    }
+
     /** Reconfigures the access-log {@code queue-length} attribute without removing the resource. */
     private void writeQueueLength(int value) throws IOException {
         ModelNode address = new ModelNode();
@@ -194,10 +251,8 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
     public void testDropsWithSmallQueue() throws Exception {
         fireConcurrentBurst();
 
-        // Give the async drain thread a moment to flush the final events and record drops.
-        Thread.sleep(500);
-
-        final long dropped = readEventsDropped();
+        // Poll until the async drain thread has finished flushing events and recording drops.
+        final long dropped = pollUntilDropCountStable();
         Assert.assertTrue(
                 "events-dropped must be > 0 after " + THREAD_COUNT + "x" + CALLS_PER_THREAD
                         + " concurrent invocations against queue-length=1; got: " + dropped,
@@ -226,19 +281,16 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
         // Switch to a large queue — triggers RESTART_RESOURCE_SERVICES, new service instance.
         writeQueueLength(4096);
 
-        // Wait for the service restart to complete.
-        Thread.sleep(500);
-
+        // Poll until the new service instance is up and the counter is readable.
+        waitForServiceRestart();
         final long droppedBefore = readEventsDropped();
         Assert.assertTrue("events-dropped must survive service restart; got: " + droppedBefore,
                 droppedBefore > 0);
 
         fireConcurrentBurst();
 
-        // Allow drain to settle.
-        Thread.sleep(500);
-
-        final long droppedAfter = readEventsDropped();
+        // Poll until the drain thread has settled; no new drops expected.
+        final long droppedAfter = pollUntilDropCountStable();
 
         System.out.println("[B3] events-dropped before=" + droppedBefore + ", after=" + droppedAfter
                 + " with queue-length=4096 and burst=" + (THREAD_COUNT * CALLS_PER_THREAD));
@@ -268,7 +320,7 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
 
         // Write another RESTART_RESOURCE_SERVICES attribute (e.g. queue-length to 2048)
         writeQueueLength(2048);
-        Thread.sleep(500);
+        waitForServiceRestart();
 
         final long countAfter = readEventsDropped();
         Assert.assertEquals("events-dropped must be preserved across service restart",
@@ -297,8 +349,6 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
         ModelNode removeResult = managementClient.getControllerClient().execute(removeOp);
         Assert.assertTrue("remove failed: " + removeResult, Operations.isSuccessfulOutcome(removeResult));
 
-        Thread.sleep(500);
-
         // Re-add the resource
         ModelNode addOp = new ModelNode();
         addOp.get(OP).set(ADD);
@@ -309,8 +359,8 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
         ModelNode addResult = managementClient.getControllerClient().execute(addOp);
         Assert.assertTrue("add failed: " + addResult, Operations.isSuccessfulOutcome(addResult));
 
-        Thread.sleep(500);
-
+        // Poll until the newly-added service is up and the counter can be read.
+        waitForServiceRestart();
         final long countAfter = readEventsDropped();
         Assert.assertEquals("events-dropped must be 0 after :remove followed by :add",
                 0L, countAfter);
