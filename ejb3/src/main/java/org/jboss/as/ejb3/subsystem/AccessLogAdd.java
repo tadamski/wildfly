@@ -24,6 +24,7 @@ import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 import org.jboss.dmr.Property;
 import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.service.ServiceRegistry;
 import org.xnio.XnioWorker;
 
 public class AccessLogAdd extends AbstractAddStepHandler {
@@ -42,6 +43,13 @@ public class AccessLogAdd extends AbstractAddStepHandler {
     @Override
     protected void performRuntime(final OperationContext context, final ModelNode operation, final ModelNode model)
             throws OperationFailedException {
+        // Reset counters to zero on resource creation (or roll-back of removal).
+        // Matches the metric definition: counts since the access-log resource was added.
+        final AccessLogHolder holder = getHolder(context.getServiceRegistry(true));
+        if (holder != null) {
+            holder.resetCounters();
+        }
+
         final String destination = AccessLogResourceDefinition.DESTINATION.resolveModelAttribute(context, model).asString();
         // Resolve path/relativeTo/rotateSuffix including defaults — used when destination=file.
         final ModelNode pathNode = AccessLogResourceDefinition.PATH.resolveModelAttribute(context, model);
@@ -100,6 +108,13 @@ public class AccessLogAdd extends AbstractAddStepHandler {
         sb.setInstance(service)
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .install();
+    }
+
+    private static AccessLogHolder getHolder(final ServiceRegistry registry) {
+        @SuppressWarnings("unchecked")
+        final ServiceController<AccessLogHolder> sc =
+                (ServiceController<AccessLogHolder>) registry.getService(AccessLogHolder.ACCESS_LOG_HOLDER_SERVICE_NAME);
+        return sc == null ? null : sc.getValue();
     }
 
     static void validateDestinationAttributes(ModelNode model) throws OperationFailedException {

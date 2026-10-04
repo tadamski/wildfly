@@ -188,6 +188,10 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
      * {@code reload-required} when the header is absent — which is overly conservative for a
      * leaf.  This handler removes unconditionally, matching the approach used by
      * {@code ConsoleAccessLogDefinition.RemoveHandler} in Undertow.
+     *
+     * <p>Note: {@link #recoverServices} calls {@code ADD_HANDLER.performRuntime} on rollback,
+     * which resets the counters to zero. In the rare case of a rolled-back removal, the
+     * metrics restart from zero rather than restoring pre-removal counts.
      */
     private static final class RemoveHandler extends AbstractRemoveStepHandler {
 
@@ -197,10 +201,6 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model)
                 throws OperationFailedException {
             context.removeService(ACCESS_LOG_CAPABILITY.getCapabilityServiceName());
-            final AccessLogHolder holder = getHolder(context.getServiceRegistry(true));
-            if (holder != null) {
-                holder.resetCounters();
-            }
         }
 
         @Override
