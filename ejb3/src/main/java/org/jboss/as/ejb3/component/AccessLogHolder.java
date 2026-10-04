@@ -4,6 +4,8 @@
  */
 package org.jboss.as.ejb3.component;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.jboss.as.ejb3.subsystem.AccessLogService;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.StartContext;
@@ -32,6 +34,10 @@ public final class AccessLogHolder implements org.jboss.msc.service.Service<Acce
             ServiceName.JBOSS.append("ejb3", "access-log", "holder");
 
     private volatile AccessLogService service;
+
+    // Metrics — live for the lifetime of this holder (server boot until server shutdown or resource removal).
+    private final AtomicLong eventsLogged = new AtomicLong();
+    private final AtomicLong eventsDropped = new AtomicLong();
 
     public AccessLogHolder() {
     }
@@ -77,5 +83,37 @@ public final class AccessLogHolder implements org.jboss.msc.service.Service<Acce
      */
     public void clear() {
         this.service = null;
+    }
+
+    // ---- Metric Accessors and Mutators ----
+
+    public long getEventsLogged() {
+        return eventsLogged.get();
+    }
+
+    public long getEventsDropped() {
+        return eventsDropped.get();
+    }
+
+    public void incrementEventsLogged() {
+        eventsLogged.incrementAndGet();
+    }
+
+    public void incrementEventsDropped() {
+        eventsDropped.incrementAndGet();
+    }
+
+    public void addEventsDropped(final long count) {
+        if (count > 0L) {
+            eventsDropped.addAndGet(count);
+        }
+    }
+
+    /**
+     * Resets metrics to zero. Called when the access-log resource is removed.
+     */
+    public void resetCounters() {
+        eventsLogged.set(0L);
+        eventsDropped.set(0L);
     }
 }

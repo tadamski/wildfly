@@ -264,4 +264,85 @@ public class AccessLogServiceTest {
 
         assertEquals("drop counter must rise after the failing emit", 1L, service.getEventsDropped());
     }
+
+    @Test
+    public void countersSurviveServiceRestartOnSameHolder() {
+        final AccessLogHolder holder = new AccessLogHolder();
+        final AccessLogService firstService = newService(holder);
+        final RecordingWriter writer1 = new RecordingWriter();
+        final EventLogger logger1 = stalledLogger(writer1);
+        firstService.setEventLogger(logger1);
+        holder.set(firstService);
+
+        final int overflow1 = 4;
+        logEvents(logger1, TEST_QUEUE_CAPACITY + overflow1);
+        firstService.recordEmitFailure(new IllegalStateException("boom 1"));
+
+        assertEquals(overflow1 + 1L, firstService.getEventsDropped());
+
+        // Stop first service: logger1 is drained/closed and its drop count is folded into holder
+        firstService.stop(null);
+
+        assertEquals(overflow1 + 1L, holder.getEventsDropped());
+
+        // Install second service on the same holder (simulating RESTART_RESOURCE_SERVICES)
+        final AccessLogService secondService = newService(holder);
+        final RecordingWriter writer2 = new RecordingWriter();
+        final EventLogger logger2 = stalledLogger(writer2);
+        secondService.setEventLogger(logger2);
+        holder.set(secondService);
+
+        // Counter seen by secondService should include prior drops
+        assertEquals(overflow1 + 1L, secondService.getEventsDropped());
+
+        final int overflow2 = 3;
+        logEvents(logger2, TEST_QUEUE_CAPACITY + overflow2);
+        secondService.recordEmitFailure(new IllegalStateException("boom 2"));
+
+        assertEquals(overflow1 + 1L + overflow2 + 1L, secondService.getEventsDropped());
+
+        secondService.stop(null);
+
+        assertEquals(overflow1 + 1L + overflow2 + 1L, holder.getEventsDropped());
+    }
+
+    @Test
+    public void stopDoesNotDoubleCountDroppedEvents() {
+        final AccessLogHolder holder = new AccessLogHolder();
+        final AccessLogService service = newService(holder);
+        final RecordingWriter writer = new RecordingWriter();
+        final EventLogger logger = stalledLogger(writer);
+        service.setEventLogger(logger);
+        holder.set(service);
+
+        final int overflow = 6;
+        logEvents(logger, TEST_QUEUE_CAPACITY + overflow);
+
+        assertEquals(overflow, service.getEventsDropped());
+
+        // First stop folds logger's dropped count into holder
+        service.stop(null);
+        assertEquals(overflow, holder.getEventsDropped());
+
+        // Second stop must be idempotent and not add dropped count again
+        service.stop(null);
+        assertEquals(overflow, holder.getEventsDropped());
+    }
+
+    @Test
+    public void holderResetCountersClearsAllMetrics() {
+        final AccessLogHolder holder = new AccessLogHolder();
+        holder.incrementEventsLogged();
+        holder.incrementEventsLogged();
+        holder.incrementEventsDropped();
+        holder.addEventsDropped(5L);
+
+        assertEquals(2L, holder.getEventsLogged());
+        assertEquals(6L, holder.getEventsDropped());
+
+        holder.resetCounters();
+
+        assertEquals(0L, holder.getEventsLogged());
+        assertEquals(0L, holder.getEventsDropped());
+    }
 }

@@ -197,6 +197,10 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model)
                 throws OperationFailedException {
             context.removeService(ACCESS_LOG_CAPABILITY.getCapabilityServiceName());
+            final AccessLogHolder holder = getHolder(context.getServiceRegistry(true));
+            if (holder != null) {
+                holder.resetCounters();
+            }
         }
 
         @Override
@@ -219,8 +223,7 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
 
         // RESTART_RESOURCE_SERVICES: remove and re-install the AccessLogService.
         // This closes the old writer and opens a new one — no server reload required.
-        // NOTE: events queued in AsyncEventLogger at the moment of removal are lost
-        // (D20 gap — drain-on-stop fix lives in wildfly-core task H2).
+        // The residual window where an in-flight invocation reaches AsyncEventLogger after closed is an accepted limitation of the lock-free design.
         AbstractWriteAttributeHandler<Void> restartServiceHandler = new AbstractWriteAttributeHandler<>(RESTART_RESOURCE_SERVICES_ATTRIBUTES) {
             @Override
             protected void validateUpdatedModel(OperationContext context, Resource resource) throws OperationFailedException {
@@ -301,14 +304,15 @@ public class AccessLogResourceDefinition extends SimpleResourceDefinition {
         resourceRegistration.registerMetric(EVENTS_DROPPED, METRIC_HANDLER);
     }
 
-    private static AccessLogService getLiveService(final ServiceRegistry registry) {
+    private static AccessLogHolder getHolder(final ServiceRegistry registry) {
         @SuppressWarnings("unchecked")
         final ServiceController<AccessLogHolder> sc =
                 (ServiceController<AccessLogHolder>) registry.getService(AccessLogHolder.ACCESS_LOG_HOLDER_SERVICE_NAME);
-        if (sc == null) {
-            return null;
-        }
-        final AccessLogHolder holder = sc.getValue();
+        return sc == null ? null : sc.getValue();
+    }
+
+    private static AccessLogService getLiveService(final ServiceRegistry registry) {
+        final AccessLogHolder holder = getHolder(registry);
         return holder == null ? null : holder.get();
     }
 

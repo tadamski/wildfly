@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -85,8 +84,7 @@ public class AccessLogService implements Service {
     private volatile EventLogger eventLogger;
 
     // Metrics
-    private final AtomicLong eventsLogged = new AtomicLong();
-    private final AtomicLong eventsDropped = new AtomicLong();
+    // Counter values live on AccessLogHolder so they survive RESTART_RESOURCE_SERVICES lifecycle.
 
     /**
      * Guards the log-once behaviour for emit failures: set to {@code true} after the first
@@ -146,7 +144,8 @@ public class AccessLogService implements Service {
         this.activeWriter = writer;
 
         // Wrap with a counting writer so we can report events-logged.
-        final EventWriter countingWriter = new CountingEventWriter(writer, eventsLogged);
+        final AccessLogHolder holder = holderSupplier.get();
+        final EventWriter countingWriter = new CountingEventWriter(writer, holder);
 
         this.eventLogger = EventLogger.createAsyncLogger(EVENT_SOURCE, countingWriter, worker.get(), queueLength);
         emitFailureLogged.set(false);
@@ -156,7 +155,10 @@ public class AccessLogService implements Service {
 
     @Override
     public void stop(final StopContext context) {
-        holderSupplier.get().clear();
+        final AccessLogHolder holder = holderSupplier.get();
+        if (holder != null) {
+            holder.clear();
+        }
         serviceConsumer.accept(null);
         final EventLogger el = this.eventLogger;
         this.eventLogger = null;
@@ -169,10 +171,12 @@ public class AccessLogService implements Service {
                 // best effort
             }
             // Read the drop count only after close(), so that events rejected during the
-            // drain are included, and fold it into the local counter: once the logger
+            // drain are included, and fold it into the holder's counter: once the logger
             // reference is gone getEventsDropped() can no longer reach it, and the metric
             // must not fall back.
-            eventsDropped.addAndGet(el.getDroppedCount());
+            if (holder != null) {
+                holder.addEventsDropped(el.getDroppedCount());
+            }
         }
         final EventWriter w = this.activeWriter;
         this.activeWriter = null;
@@ -248,7 +252,8 @@ public class AccessLogService implements Service {
 
     /** Running total of events handed to the writer. */
     public long getEventsLogged() {
-        return eventsLogged.get();
+        final AccessLogHolder holder = holderSupplier.get();
+        return holder != null ? holder.getEventsLogged() : 0L;
     }
 
     /**
@@ -265,11 +270,13 @@ public class AccessLogService implements Service {
      * and an audit trail may be lossy.
      *
      * <p>The value is monotonic across a {@link #stop}: the logger's own count is folded
-     * into the local counter before the reference is dropped.
+     * into the holder's counter before the reference is dropped.
      */
     public long getEventsDropped() {
+        final AccessLogHolder holder = holderSupplier.get();
+        final long base = holder != null ? holder.getEventsDropped() : 0L;
         final EventLogger el = eventLogger;
-        return eventsDropped.get() + (el != null ? el.getDroppedCount() : 0L);
+        return base + (el != null ? el.getDroppedCount() : 0L);
     }
 
     /**
@@ -284,7 +291,10 @@ public class AccessLogService implements Service {
      * @param cause the throwable thrown by the emit call
      */
     public void recordEmitFailure(final Throwable cause) {
-        eventsDropped.incrementAndGet();
+        final AccessLogHolder holder = holderSupplier.get();
+        if (holder != null) {
+            holder.incrementEventsDropped();
+        }
         try {
             if (emitFailureLogged.compareAndSet(false, true)) {
                 EjbLogger.ROOT_LOGGER.accessLogEmitFailed(cause);
@@ -333,21 +343,22 @@ public class AccessLogService implements Service {
 
     /**
      * Thin wrapper that increments a counter on each successful write.
-     * Stays in ejb3; H2 does not need to lift it.
      */
     private static final class CountingEventWriter implements EventWriter {
         private final EventWriter delegate;
-        private final AtomicLong counter;
+        private final AccessLogHolder holder;
 
-        CountingEventWriter(final EventWriter delegate, final AtomicLong counter) {
+        CountingEventWriter(final EventWriter delegate, final AccessLogHolder holder) {
             this.delegate = delegate;
-            this.counter = counter;
+            this.holder = holder;
         }
 
         @Override
         public void write(final org.wildfly.event.logger.Event event) {
             delegate.write(event);
-            counter.incrementAndGet();
+            if (holder != null) {
+                holder.incrementEventsLogged();
+            }
         }
 
         @Override

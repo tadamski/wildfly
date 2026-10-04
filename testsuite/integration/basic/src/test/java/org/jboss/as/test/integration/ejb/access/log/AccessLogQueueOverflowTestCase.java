@@ -212,12 +212,12 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
 
     /**
      * B3/1 — Change {@code queue-length} to 4096 (large) and run the same concurrent burst.
-     * Assert that {@code events-dropped} remains zero on the fresh service instance.
+     * Assert that {@code events-dropped} sees no additional drops (delta == 0).
      *
      * <p>{@code queue-length} is {@code RESTART_RESOURCE_SERVICES}: the write-attribute
-     * removes the old service object and installs a brand-new one whose {@code eventsDropped}
-     * counter starts at zero.  Reading the counter after the burst therefore measures exactly
-     * what the large-queue burst produced — no delta arithmetic needed or valid.
+     * restarts the service. Following D25 / R6, counters live on {@code AccessLogHolder}
+     * and survive service restarts, so {@code events-dropped} retains the count accumulated in
+     * B2. Reading the counter before and after the burst verifies no additional drops occurred.
      */
     @Test
     @InSequence(20)
@@ -229,20 +229,91 @@ public class AccessLogQueueOverflowTestCase extends AbstractConsoleAccessLogTest
         // Wait for the service restart to complete.
         Thread.sleep(500);
 
+        final long droppedBefore = readEventsDropped();
+        Assert.assertTrue("events-dropped must survive service restart; got: " + droppedBefore,
+                droppedBefore > 0);
+
         fireConcurrentBurst();
 
         // Allow drain to settle.
         Thread.sleep(500);
 
-        final long dropped = readEventsDropped();
+        final long droppedAfter = readEventsDropped();
 
-        System.out.println("[B3] events-dropped with queue-length=4096 after "
-                + THREAD_COUNT + "x" + CALLS_PER_THREAD + " invocations: " + dropped);
+        System.out.println("[B3] events-dropped before=" + droppedBefore + ", after=" + droppedAfter
+                + " with queue-length=4096 and burst=" + (THREAD_COUNT * CALLS_PER_THREAD));
 
         Assert.assertEquals(
-                "events-dropped must be 0 with queue-length=4096 after "
-                        + THREAD_COUNT + "x" + CALLS_PER_THREAD + " invocations; got: " + dropped,
-                0L, dropped);
+                "events-dropped must not increase with queue-length=4096 after "
+                        + THREAD_COUNT + "x" + CALLS_PER_THREAD + " invocations; delta="
+                        + (droppedAfter - droppedBefore),
+                droppedBefore, droppedAfter);
+    }
+
+    // -----------------------------------------------------------------------
+    // Counter lifecycle tests: restart preserves, remove+add resets
+    // -----------------------------------------------------------------------
+
+    /**
+     * Verifies that modifying a {@code RESTART_RESOURCE_SERVICES} attribute preserves
+     * the accumulated dropped events count.
+     */
+    @Test
+    @InSequence(30)
+    @RunAsClient
+    public void testCountersSurviveRestart() throws Exception {
+        final long countBefore = readEventsDropped();
+        Assert.assertTrue("events-dropped must be non-zero from earlier tests; got: " + countBefore,
+                countBefore > 0);
+
+        // Write another RESTART_RESOURCE_SERVICES attribute (e.g. queue-length to 2048)
+        writeQueueLength(2048);
+        Thread.sleep(500);
+
+        final long countAfter = readEventsDropped();
+        Assert.assertEquals("events-dropped must be preserved across service restart",
+                countBefore, countAfter);
+    }
+
+    /**
+     * Verifies that removing and re-adding the access-log resource resets the counters to zero.
+     */
+    @Test
+    @InSequence(40)
+    @RunAsClient
+    public void testRemoveAndAddResetsCounters() throws Exception {
+        final long countBefore = readEventsDropped();
+        Assert.assertTrue("events-dropped must be non-zero before remove; got: " + countBefore,
+                countBefore > 0);
+
+        ModelNode address = new ModelNode();
+        address.add("subsystem", "ejb3");
+        address.add("service", "access-log");
+
+        // Remove the resource
+        ModelNode removeOp = new ModelNode();
+        removeOp.get(OP).set(REMOVE);
+        removeOp.get(OP_ADDR).set(address);
+        ModelNode removeResult = managementClient.getControllerClient().execute(removeOp);
+        Assert.assertTrue("remove failed: " + removeResult, Operations.isSuccessfulOutcome(removeResult));
+
+        Thread.sleep(500);
+
+        // Re-add the resource
+        ModelNode addOp = new ModelNode();
+        addOp.get(OP).set(ADD);
+        addOp.get(OP_ADDR).set(address);
+        addOp.get("destination").set("logging");
+        addOp.get("include-local").set(true);
+        addOp.get("queue-length").set(1024);
+        ModelNode addResult = managementClient.getControllerClient().execute(addOp);
+        Assert.assertTrue("add failed: " + addResult, Operations.isSuccessfulOutcome(addResult));
+
+        Thread.sleep(500);
+
+        final long countAfter = readEventsDropped();
+        Assert.assertEquals("events-dropped must be 0 after :remove followed by :add",
+                0L, countAfter);
     }
 
     // -----------------------------------------------------------------------
